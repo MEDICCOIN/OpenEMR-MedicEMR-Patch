@@ -20,11 +20,11 @@ If you already use OpenEMR but want to accept Medic Coin as a form of payment, y
 
 * First of all, generate a backup of your EMR: databases, files. Consult your hosting documents to know how to backup your EMR.
 * Change current directory to root of your EMR:
-```
+```sh
 cd /Path/to/EMR
 ```
 Replace `/Path/to/EMR` with path to root of your EMR where contains folders like apis, ccr, gacl, portal, version.php
 * Patch your EMR:
-```
+```sh
 curl -s https://raw.githubusercontent.com/MEDICCOIN/OpenEMR-MedicEMR-Patch/master/openemr-v5.0.1-medicemr-v5.0.1.patch | patch -p1
 ```
