@@ -6,7 +6,7 @@ MedicEMR is a fork of OpenEMR and is the most popular open source electronic hea
 
 ## Open Source MedicEMR
 
-Open Source MedicEMR is always available to download at MEDICCOIN/Medic-EMR
+Open Source MedicEMR is always available to download at https://github.com/MEDICCOIN/Medic-EMR/releases/latest
 
 ## Hosted MedicEMR
 
