@@ -1,0 +1,2681 @@
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/billing/edit_payment.php ./web/interface/billing/edit_payment.php
+--- ./openemr.v5.0.1.4/interface/billing/edit_payment.php	2018-09-22 08:45:58.308787519 +0000
++++ ./web/interface/billing/edit_payment.php	2018-09-12 08:22:50.070373661 +0000
+@@ -92,11 +92,17 @@
+         if ($post_to_date=='') {
+             $post_to_date=date('Y-m-d');
+         }
+-
++        
+         if (formData('deposit_date')=='') {
+             $deposit_date=$post_to_date;
+         }
+-
++        ### Begin Medic Coin Module ###
++        $medic_usd = isset($_POST['medic_usd']) ? floatval($_POST['medic_usd']) : $GLOBALS['medic_usd'];
++        $medic_payment_amount = formData('medic_payment_amount') ? floatval(formData('medic_payment_amount')) : floatval($_POST['medic_payment_amount']);
++        $fee_medicaddress = formData('fee_medicaddress') ? trim(formData('fee_medicaddress')) : trim($_POST['fee_medicaddress']);
++        $medic_txID = formData('medic_txID') ? trim(formData('medic_txID')) : trim($_POST['medic_txID']);
++        ### End Medic Coin Module ###
++    
+         sqlStatement("update ar_session set "    .
+         $QueryPart .
+         "', user_id = '"     . trim($user_id)  .
+@@ -111,6 +117,11 @@
+         "', adjustment_code = '"   . trim(formData('adjustment_code')) .
+         "', post_to_date = '" . trim($post_to_date)  .
+         "', payment_method = '"   . trim(formData('payment_method')) .
++        ### Begin Medic Coin Module ###
++        "', medic_paytotal = '"   . $medic_payment_amount .
++        "', medic_address = '"   . $fee_medicaddress .
++        "', medic_txID = '"   . $medic_txID .
++        ### End Medic Coin Module ###
+         "'	where session_id='$payment_id'");
+     //===============================================================================
+         $CountIndexAbove=$_REQUEST['CountIndexAbove'];
+@@ -156,11 +167,15 @@
+                               "', account_code = '" . "$AccountCode"  .
+                               "', payer_type = '"   . trim(formData("HiddenIns$CountRow")) .
+                               "', reason_code = '"   . trim(formData("ReasonCode$CountRow")) .
++                              ### Begin Medic Coin Module ###
++                              "', medic_payamount = '"   . cformat(floatval(formData("Payment$CountRow"))/$medic_usd) .
++                              ### End Medic Coin Module ###
+                               "' where  session_id ='$payment_id' and pid ='" . trim(formData("HiddenPId$CountRow"))  .
+                               "' and  encounter  ='" . trim(formData("HiddenEncounter$CountRow"))  .
+                                     "' and  code_type  ='" . trim(formData("HiddenCodetype$CountRow"))  .
+                               "' and  code  ='" . trim(formData("HiddenCode$CountRow"))  .
+                               "' and  modifier  ='" . trim(formData("HiddenModifier$CountRow"))  .
++                              
+                               "' and pay_amount>0");
+                     } else {
+                                  sqlBeginTrans();
+@@ -181,6 +196,11 @@
+                                 "', pay_amount = '" . trim(formData("Payment$CountRow"))  .
+                                 "', adj_amount = '"    . 0 .
+                                 "', account_code = '" . "$AccountCode"  .
++                                ### Begin Medic Coin Module ###
++                                "', medic_payamount = '" . cformat(floatval(formData("Payment$CountRow"))/$medic_usd)  .
++                                "', medic_address = '" . "$fee_medicaddress"  .
++                                "', medic_txID = '" . "$medic_txID"  .
++                                ### End Medic Coin Module ###
+                                 "'");
+                                  sqlCommitTrans();
+                     }
+@@ -219,6 +239,9 @@
+                                 "', memo = '" . "$AdjustString"  .
+                                 "', account_code = '" . "$AccountCode"  .
+                                 "', payer_type = '"   . trim(formData("HiddenIns$CountRow")) .
++                                ### Begin Medic Coin Module ###
++                                "', medic_adjamount = '"   . cformat(floatval(formData("AdjAmount$CountRow"))/$medic_usd) .
++                                ### End Medic Coin Module ###
+                                 "' where  session_id ='$payment_id' and pid ='" . trim(formData("HiddenPId$CountRow"))  .
+                                 "' and  encounter  ='" . trim(formData("HiddenEncounter$CountRow"))  .
+                                   "' and  code_type  ='" . trim(formData("HiddenCodetype$CountRow"))  .
+@@ -244,6 +267,11 @@
+                                 "', adj_amount = '"    . trim(formData("AdjAmount$CountRow")) .
+                                 "', memo = '" . "$AdjustString"  .
+                                 "', account_code = '" . "$AccountCode"  .
++                                ### Begin Medic Coin Module ###
++                                "', medic_adjamount = '" . cformat(floatval(formData("AdjAmount$CountRow"))/$medic_usd)  .
++                                "', medic_address = '" . "$fee_medicaddress"  .
++                                "', medic_txID = '" . "$medic_txID"  .
++                                ### End Medic Coin Module ###
+                                 "'");
+                                 sqlCommitTrans();
+                     }
+@@ -327,6 +355,9 @@
+                                 "', pay_amount = '" . trim(formData("Takeback$CountRow"))*-1  .
+                                 "', account_code = '" . "Takeback"  .
+                                 "', payer_type = '"   . trim(formData("HiddenIns$CountRow")) .
++                                ### Begin Medic Coin Module ###
++                                "', medic_payamount = '"   . cformat(floatval(formData("Takeback$CountRow"))/$medic_usd)*-1 .
++                                ### End Medic Coin Module ###
+                                 "' where  session_id ='$payment_id' and pid ='" . trim(formData("HiddenPId$CountRow"))  .
+                                 "' and  encounter  ='" . trim(formData("HiddenEncounter$CountRow"))  .
+                                   "' and  code_type  ='" . trim(formData("HiddenCodetype$CountRow"))  .
+@@ -351,6 +382,11 @@
+                                 "', pay_amount = '" . trim(formData("Takeback$CountRow"))*-1  .
+                                 "', adj_amount = '"    . 0 .
+                                 "', account_code = '" . "Takeback"  .
++                                ### Begin Medic Coin Module ###
++                                "', medic_payamount = '" . cformat(floatval(formData("Takeback$CountRow"))/$medic_usd)*-1  .
++                                "', medic_address = '" . "$fee_medicaddress"  .
++                                "', medic_txID = '" . "$medic_txID"  .
++                                ### End Medic Coin Module ###
+                                 "'");
+                                 sqlCommitTrans();
+                     }
+@@ -479,8 +515,7 @@
+      }
+     if(CompletlyBlankAbove())//The distribution rows already in the database are checked.
+      {
+-      alert("<?php echo htmlspecialchars(xl('None of the Top Distribution Row Can be Completly Blank.'), ENT_QUOTES);
+-        echo htmlspecialchars('\n');echo htmlspecialchars(xl('Use Delete Option to Remove.'), ENT_QUOTES) ?>")
++      alert("<?php echo htmlspecialchars(xl('None of the Top Distribution Row Can be Completly Blank.'), ENT_QUOTES);echo htmlspecialchars('\n');echo htmlspecialchars(xl('Use Delete Option to Remove.'), ENT_QUOTES) ?>")
+       return false;
+      }
+     if(!CheckPayingEntityAndDistributionPostFor())//Ensures that Insurance payment is distributed under Ins1,Ins2,Ins3 and Patient paymentat under Pat.
+@@ -515,8 +550,7 @@
+      }
+     if(CompletlyBlankAbove())//The distribution rows already in the database are checked.
+      {
+-      alert("<?php echo htmlspecialchars(xl('None of the Top Distribution Row Can be Completly Blank.'), ENT_QUOTES);
+-        echo htmlspecialchars('\n');echo htmlspecialchars(xl('Use Delete Option to Remove.'), ENT_QUOTES) ?>")
++      alert("<?php echo htmlspecialchars(xl('None of the Top Distribution Row Can be Completly Blank.'), ENT_QUOTES);echo htmlspecialchars('\n');echo htmlspecialchars(xl('Use Delete Option to Remove.'), ENT_QUOTES) ?>")
+       return false;
+      }
+     if(!CheckPayingEntityAndDistributionPostFor())//Ensures that Insurance payment is distributed under Ins1,Ins2,Ins3 and Patient paymentat under Pat.
+@@ -648,6 +682,25 @@
+  }
+ //========================================================================================
+ 
++/* Begin Medic Coin Module */
++function medic_init()
++{
++    if ($('#payment_method').val() == 'mediccoin')
++    {
++        $('#div_check_number').show();
++        $('#check_number').hide();
++        $('.medic_payment_field').show();
++        $('#medic_txID').prop('required', true);
++    }
++    else
++    {
++        $('.medic_payment_field').hide();
++        $('#medic_txID').attr('required', false);
++    }
++}
++var medic_usd = <?php echo $GLOBALS['medic_usd'];?>;
++/* End Medic Coin Module */
++
+ $(document).ready(function() {
+     $('.datepicker').datetimepicker({
+         <?php $datetimepicker_timepicker = false; ?>
+@@ -656,6 +709,18 @@
+         <?php require($GLOBALS['srcdir'] . '/js/xl/jquery-datetimepicker-2-5-4.js.php'); ?>
+         <?php // can add any additional javascript settings to datetimepicker here; need to prepend first setting with a comma ?>
+     });
++    /* Begin Medic Coin Module */
++    medic_init();
++    $('#payment_method').on('change', function(){
++        medic_init();
++    });
++    $('#payment_amount').on('change', function(){
++        if ($('#payment_amount').val())
++        {
++            $('#medic_payment_amount').val(Number($('#payment_amount').val()/medic_usd).toFixed(8));
++        }
++    });
++    /* End Medic Coin Module */
+ });
+ 
+ </script>
+@@ -757,7 +822,12 @@
+ <?php
+ if ($payment_id*1>0) {//Distribution rows already in the database are displayed.
+     ?>
+-
++<!-- Begin Medic Coin Module -->
++<script language="JavaScript">
++    // update price medic usd correctly when this payment is posted
++    medic_usd = <?php echo ($medic_usd ? $medic_usd : $GLOBALS['medic_usd']);?>;
++</script>
++<!-- End Medic Coin Module -->
+ <table width="1024" border="0" cellspacing="0" cellpadding="10" bgcolor="#DEDEDE"><tr><td>
+     <table width="1004" border="0" cellspacing="0" cellpadding="0">
+ 
+@@ -1095,7 +1165,9 @@
+       </tr>
+     </table>
+     </td></tr></table>
+-
++<!-- Begin Medic Coin Module -->
++<input type="hidden" name="medic_usd" value="<?php echo htmlspecialchars($GLOBALS['medic_usd']);?>"/>
++<!-- End Medic Coin Module -->
+ <input type="hidden" name="hidden_patient_code" id="hidden_patient_code" value="<?php echo htmlspecialchars($hidden_patient_code);?>"/>
+ <input type='hidden' name='mode' id='mode' value='' />
+ <input type='hidden' name='ajax_mode' id='ajax_mode' value='' />
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/billing/new_payment.php ./web/interface/billing/new_payment.php
+--- ./openemr.v5.0.1.4/interface/billing/new_payment.php	2018-09-22 08:45:58.312787842 +0000
++++ ./web/interface/billing/new_payment.php	2018-09-13 05:21:23.261588439 +0000
+@@ -50,6 +50,10 @@
+ //ar_session addition code
+ //===============================================================================
+ 
++### Begin Medic Coin Module ###
++$fee_medicaddress = $GLOBALS['medic_address'];
++### End Medic Coin Module ###
++
+ if ($mode == "new_payment" || $mode == "distribute") {
+     if (trim(formData('type_name'))=='insurance') {
+         $QueryPart="payer_id = '$hidden_type_code', patient_id = '0" ; // Closing Quote in idSqlStatement below
+@@ -70,7 +74,12 @@
+     if (formData('deposit_date')=='') {
+         $deposit_date=$post_to_date;
+     }
+-
++    ### Begin Medic Coin Module ###
++    $medic_payment_amount = formData('medic_payment_amount') ? floatval(formData('medic_payment_amount')) : floatval($_POST['medic_payment_amount']);
++    $fee_medicaddress = formData('fee_medicaddress') ? trim(formData('fee_medicaddress')) : trim($_POST['fee_medicaddress']);
++    $medic_txID = formData('medic_txID') ? trim(formData('medic_txID')) : trim($_POST['medic_txID']);
++    ### End Medic Coin Module ###
++    
+       $payment_id = idSqlStatement("insert into ar_session set "    .
+         $QueryPart .
+         "', user_id = '"     . trim($user_id)  .
+@@ -85,6 +94,11 @@
+         "', adjustment_code = '"   . trim(formData('adjustment_code')) .
+         "', post_to_date = '" . trim($post_to_date)  .
+         "', payment_method = '"   . trim(formData('payment_method')) .
++        ### Begin Medic Coin Module ###
++        "', medic_paytotal = '"   . $medic_payment_amount .
++        "', medic_address = '"   . $fee_medicaddress .
++        "', medic_txID = '"   . $medic_txID .
++        ### End Medic Coin Module ###
+         "'");
+ }
+ 
+@@ -275,6 +289,23 @@
+    }
+ 
+  }
++/* Begin Medic Coin Module */
++function medic_init()
++{
++    if ($('#payment_method').val() == 'mediccoin')
++    {
++        $('#div_check_number').show();
++        $('#check_number').hide();
++        $('.medic_payment_field').show();
++        $('#medic_txID').prop('required', true);
++    }
++    else
++    {
++        $('.medic_payment_field').hide();
++        $('#medic_txID').attr('required', false);
++    }
++}
++/* End Medic Coin Module */
+ function ResetForm()
+  {//Resets form used in the 'Cancel Changes' button in the master screen.
+   document.forms[0].reset();
+@@ -282,6 +313,9 @@
+   document.getElementById('div_insurance_or_patient').innerHTML='&nbsp;';
+   CheckVisible('yes');//Payment Method is made 'Check Payment' and the Check box is made visible.
+   PayingEntityAction();//Paying Entity is made 'insurance' and Payment Category is 'Insurance Payment'
++  /* Begin Medic Coin Module */
++  medic_init();
++  /* End Medic Coin Module */
+  }
+ function FillUnappliedAmount()
+  {//Filling the amount
+@@ -296,6 +330,19 @@
+         <?php require($GLOBALS['srcdir'] . '/js/xl/jquery-datetimepicker-2-5-4.js.php'); ?>
+         <?php // can add any additional javascript settings to datetimepicker here; need to prepend first setting with a comma ?>
+     });
++    /* Begin Medic Coin Module */
++    var medic_usd = <?php echo $GLOBALS['medic_usd'];?>;
++    medic_init();
++    $('#payment_method').on('change', function(){
++        medic_init();
++    });
++    $('#payment_amount').on('change', function(){
++        if ($('#payment_amount').val())
++        {
++            $('#medic_payment_amount').val(Number($('#payment_amount').val()/medic_usd).toFixed(8));
++        }
++    });
++    /* End Medic Coin Module */
+ });
+ </script>
+ <script language="javascript" type="text/javascript">
+@@ -322,6 +369,15 @@
+     border: 1px solid #ccc;
+     padding: 10px;
+ }
++/* Begin Medic Coin Module */
++.shorttx a {
++    white-space: nowrap;
++    overflow: hidden;
++    text-overflow: ellipsis;
++    display: inline-block;
++    max-width: 200px !important;    
++}
++/* End Medic Coin Module */
+ </style>
+ <link rel="stylesheet" href="<?php echo $css_header; ?>" type="text/css">
+ <link rel="stylesheet" href="<?php echo $GLOBALS['assets_static_relative']; ?>/jquery-datetimepicker-2-5-4/build/jquery.datetimepicker.min.css">
+@@ -411,6 +467,9 @@
+       </tr>
+     </table>
+     </td></tr></table>
++<!-- Begin Medic Coin Module -->
++<input type="hidden" name="medic_usd" value="<?php echo htmlspecialchars($GLOBALS['medic_usd']);?>"/>
++<!-- End Medic Coin Module -->
+ <input type="hidden" name="hidden_patient_code" id="hidden_patient_code" value="<?php echo htmlspecialchars($hidden_patient_code);?>"/>
+ <input type='hidden' name='mode' id='mode' value='' />
+ <input type='hidden' name='default_search_patient' id='default_search_patient' value='<?php echo $default_search_patient ?>' />
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/billing/payment_master.inc.php ./web/interface/billing/payment_master.inc.php
+--- ./openemr.v5.0.1.4/interface/billing/payment_master.inc.php	2018-09-22 08:45:58.312787842 +0000
++++ ./web/interface/billing/payment_master.inc.php	2018-09-12 07:21:54.772942129 +0000
+@@ -106,11 +106,22 @@
+     $row=sqlFetchArray($rs);
+     $pay_amount=$row['sum_pay_amount'];
+     $UndistributedAmount=$pay_total-$pay_amount-$global_amount;
+-
++    
++    ### Begin Medic Coin Module ###
++    /*
++    ### Begin Medic Coin Module ###
+     $res = sqlStatement("SELECT check_date ,reference ,insurance_companies.name,
+ 	payer_id,pay_total,payment_type,post_to_date,patient_id ,
+ 	adjustment_code,description,deposit_date,payment_method
+ 	 FROM ar_session left join insurance_companies on ar_session.payer_id=insurance_companies.id 	where ar_session.session_id ='$payment_id'");
++	### Begin Medic Coin Module ###
++    */
++    $res = sqlStatement("SELECT check_date ,reference ,insurance_companies.name,
++	payer_id,pay_total,payment_type,post_to_date,patient_id ,
++	adjustment_code,description,deposit_date,payment_method,
++	medic_paytotal, medic_address, medic_txID
++	 FROM ar_session left join insurance_companies on ar_session.payer_id=insurance_companies.id 	where ar_session.session_id ='$payment_id'");
++    ### End Medic Coin Module ###
+     $row = sqlFetchArray($res);
+     $InsuranceCompanyName=$row['name'];
+     $InsuranceCompanyId=$row['payer_id'];
+@@ -124,6 +135,12 @@
+     $AdjustmentCode=$row['adjustment_code'];
+     $DepositDate=$row['deposit_date']=='0000-00-00'?'':$row['deposit_date'];
+     $Description=$row['description'];
++    ### Begin Medic Coin Module ###
++    $medic_payment_amount = $row['medic_paytotal'];
++    $fee_medicaddress = $row['medic_address'];
++    $medic_txID = $row['medic_txID'];
++    $medic_usd = cformat($PayTotal/$row['medic_paytotal']);
++    ### End Medic Coin Module ###
+     if ($row['payment_type']=='insurance' || $row['payer_id']*1 > 0) {
+         $res = sqlStatement("SELECT insurance_companies.name FROM insurance_companies
+ 				where insurance_companies.id ='$InsuranceCompanyId'");
+@@ -305,6 +322,20 @@
+         <td align="left" class="text"><font  style="font-size:11px"><?php echo htmlspecialchars(xl('UNDISTRIBUTED'), ENT_QUOTES).':' ?></font><input name="HidUnappliedAmount" id="HidUnappliedAmount"  value="<?php echo ($UndistributedAmount*1==0)? htmlspecialchars("0.00") : htmlspecialchars(number_format($UndistributedAmount, 2, '.', ','));?>" type="hidden"/><input name="HidUnpostedAmount" id="HidUnpostedAmount"  value="<?php echo htmlspecialchars($UndistributedAmount); ?>" type="hidden"/><input name="HidCurrentPostedAmount" id="HidCurrentPostedAmount"  value="" type="hidden"/></td>
+         <td align="left" class="text"><div  id="TdUnappliedAmount" class="text"  style="border:1px solid black; width:75px; background-color:#EC7676; padding-left:5px;"><?php echo ($UndistributedAmount*1==0)? htmlspecialchars("0.00") : htmlspecialchars(number_format($UndistributedAmount, 2, '.', ','));?></div></td>
+         </tr>
++      <!-- Begin Medic Coin Module -->
++      <tr height="1">
++        <td colspan="14" align="left" ></td>
++      </tr>
++      <tr class="medic_payment_field">
++        <td align="left" class='text'></td>
++        <td align="left" class='text'><?php echo htmlspecialchars(xl('Medic Amount'), ENT_QUOTES).':' ?></td>
++        <td align="left" class='text' colspan="3"><input type='text' name='medic_payment_amount' id='medic_payment_amount' value='<?php echo htmlspecialchars($medic_payment_amount);?>' readonly /></td>
++        <td align="left" class='text'><?php echo htmlspecialchars(xl('Medic Address'), ENT_QUOTES).':' ?></td>
++        <td align="left" class='text' colspan="3"><input type='text' name='fee_medicaddress' id='fee_medicaddress' value='<?php echo $fee_medicaddress;?>' title="<?php echo $fee_medicaddress;?>" readonly /></td>
++        <td align="right" class='text'><?php echo htmlspecialchars(xl('Medic TxID'), ENT_QUOTES).':' ?></td>
++        <td align="left" class='text' colspan="4"><input style="width:95%;" type='text' name='medic_txID' id='medic_txID' value='<?php echo htmlspecialchars($medic_txID);?>' /></td>
++      </tr>
++      <!-- End Medic Coin Module -->
+     <?php
+     if ($screen=='new_payment') {
+     ?>
+@@ -442,6 +473,24 @@
+                     <td align="left" ><div  id="TdUnappliedAmount" class="text"  style="border:1px solid black; background-color:#EC7676; width:75px; padding-left:5px;"><?php echo ($UndistributedAmount*1==0)? htmlspecialchars("0.00") : htmlspecialchars(number_format($UndistributedAmount, 2, '.', ','));?></div></td>
+                     <td align="left" class="text"></td>
+                   </tr>
++                  <!-- Begin Medic Coin Module -->
++                  <?php if ($PaymentMethod == 'mediccoin') { ?>
++                  <tr height="1">
++                    <td colspan="13" align="left" ></td>
++                  </tr>
++                  <tr>
++                    <td align="left" class='text'></td>
++                    <td align="left" class='text'><?php echo htmlspecialchars(xl('Medic Amount'), ENT_QUOTES).':' ?></td>
++                    <td align="left" class='text bottom left top right'><?php echo htmlspecialchars($medic_payment_amount);?><input type="hidden" name="medic_payment_amount" value="<?php echo htmlspecialchars($medic_payment_amount);?>"/></td>
++                    <td align="left" class='text'></td>
++                    <td align="left" class='text'><?php echo htmlspecialchars(xl('Medic Address'), ENT_QUOTES).':' ?></td>
++                    <td align="left" class='text bottom left top right' colspan="3"><?php echo $fee_medicaddress;?><input type="hidden" name="fee_medicaddress" value="<?php echo htmlspecialchars($fee_medicaddress);?>"/></td>
++                    <td align="right" class='text'><?php echo htmlspecialchars(xl('Medic TxID'), ENT_QUOTES).':' ?></td>
++                    <td align="left" class='text bottom left top right shorttx' colspan="4"><a href="https://explorer.mediccoin.com/tx/<?php echo htmlspecialchars($medic_txID);?>" title="<?php echo htmlspecialchars($medic_txID);?>" target="_blank"><?php echo htmlspecialchars($medic_txID);?></a><input type="hidden" name="medic_txID" value="<?php echo htmlspecialchars($medic_txID);?>" /></td>
++                  </tr>
++                  <?php } ?>
++                  <!-- End Medic Coin Module -->
++                  
+                   <tr height="5">
+                     <td colspan="13" align="left"></td>
+                   </tr>
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/billing/search_payments.php ./web/interface/billing/search_payments.php
+--- ./openemr.v5.0.1.4/interface/billing/search_payments.php	2018-09-22 08:45:58.312787842 +0000
++++ ./web/interface/billing/search_payments.php	2018-09-10 06:31:41.194248060 +0000
+@@ -239,6 +239,24 @@
+         <?php require($GLOBALS['srcdir'] . '/js/xl/jquery-datetimepicker-2-5-4.js.php'); ?>
+         <?php // can add any additional javascript settings to datetimepicker here; need to prepend first setting with a comma ?>
+     });
++    
++    /* ### Begin Medic Coin Module */
++    function CheckVisible()
++    {
++        if ($('#payment_method').val() == 'check_payment' || $('#payment_method').val() == 'bank_draft')
++        {
++            $('#check_number').prop('disabled', false);
++        }
++        else
++        {
++            $('#check_number').prop('disabled', true);
++        }
++    }
++    CheckVisible();
++    $('#payment_method').on('change', function(){
++        CheckVisible();
++    });
++    /* ### End Medic Coin Module */
+ });
+ 
+ </script>
+@@ -332,6 +350,15 @@
+ .top{border-top:1px solid black;}
+ .left{border-left:1px solid black;}
+ .right{border-right:1px solid black;}
++/* Begin Medic Coin Module */
++.shorttx a {
++    white-space: nowrap;
++    overflow: hidden;
++    text-overflow: ellipsis;
++    display: inline-block;
++    max-width: 200px !important;    
++}
++/* End Medic Coin Module */
+ </style>
+ </head>
+ <body class="body_top" onLoad="OnloadAction()">
+@@ -476,6 +503,16 @@
+                       <td width="70" class="left top" ><?php echo htmlspecialchars(xl('Pay Status'), ENT_QUOTES) ?></td>
+                       <td width="50" class="left top" ><?php echo htmlspecialchars(xl('Payment'), ENT_QUOTES) ?></td>
+                       <td width="70" class="left top right" ><?php echo htmlspecialchars(xl('Undistributed'), ENT_QUOTES) ?></td>
++                      <!-- Begin Medic Coin Module -->
++                      <?php
++                      if ($_POST["payment_method"] == "mediccoin")
++                      {
++                        echo '<td width="130" class="left top" >' . htmlspecialchars(xl('Medic Amount'), ENT_QUOTES) . '</td>';
++                        echo '<td width="250" class="left top" >' . htmlspecialchars(xl('Medic Address'), ENT_QUOTES) . '</td>';
++                        echo '<td width="250" class="left top right" >' . htmlspecialchars(xl('Medic TxID'), ENT_QUOTES) . '</td>';
++                      }
++                      ?>
++                      <!-- End Medic Coin Module -->
+                       </tr>
+                         <?php
+                           $CountIndex=0;
+@@ -552,6 +589,16 @@
+                               echo $UndistributedAmount*1==0 ? htmlspecialchars(xl('Fully Paid'), ENT_QUOTES) : htmlspecialchars(xl('Unapplied'), ENT_QUOTES); ?></a></td>
+                                 <td align="right" class="<?php echo $StringClass; ?>" ><a href="edit_payment.php?payment_id=<?php echo htmlspecialchars($RowSearch['session_id']); ?>"  class='medium_modal' ><?php echo htmlspecialchars($RowSearch['pay_total']); ?></a></td>
+                                 <td align="right" class="<?php echo $StringClass; ?> right" ><a href="edit_payment.php?payment_id=<?php echo htmlspecialchars($RowSearch['session_id']); ?>"  class='medium_modal' ><?php echo htmlspecialchars(number_format($UndistributedAmount, 2)); ?></a></td>
++                                <!-- Begin Medic Coin Module -->
++                                <?php
++                                  if ($_POST["payment_method"] == "mediccoin")
++                                  {
++                                    echo '<td align="right" class="' . $StringClass . '" ><a href="edit_payment.php?payment_id=' . htmlspecialchars($RowSearch['session_id']) . '" class="medium_modal">' . htmlspecialchars($RowSearch['medic_paytotal']) . '</a></td>';
++                                    echo '<td align="right" class="' . $StringClass . ' shorttx" ><a href="https://explorer.mediccoin.com/address/' . htmlspecialchars($RowSearch['medic_address']) . '" title="' . htmlspecialchars($RowSearch['medic_address']) . '" target="_blank">' . htmlspecialchars($RowSearch['medic_address']) . '</a></td>';
++                                    echo '<td align="right" class="' . $StringClass . ' right shorttx" ><a href="https://explorer.mediccoin.com/tx/' . htmlspecialchars($RowSearch['medic_txID']) . '" title="' . htmlspecialchars($RowSearch['medic_txID']) . '" target="_blank">' . htmlspecialchars($RowSearch['medic_txID']) . '</a></td>';
++                                  }
++                                ?>
++                                <!-- End  Medic Coin Module -->
+                               </tr>
+                                 <?php
+                         }//while ($RowSearch = sqlFetchArray($ResultSearch))
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/globals.php ./web/interface/globals.php
+--- ./openemr.v5.0.1.4/interface/globals.php	2018-09-22 08:45:58.552807251 +0000
++++ ./web/interface/globals.php	2018-09-12 05:40:33.943558908 +0000
+@@ -614,5 +614,9 @@
+     $GLOBALS['temporary_files_dir'] = rtrim(sys_get_temp_dir(), '/');
+ }
+ 
++### Begin Medic Coin Module ###
++$GLOBALS['medic_usd'] = file_get_contents('http://sharedmn.mediccoin.net/coinmkc.php');
++$GLOBALS['medic_qrcode_prefix'] = 'https://explorer.mediccoin.com/qr/';
++### End Medic Coin Module ###
+ // turn off PHP compatibility warnings
+ ini_set("session.bug_compat_warn", "off");
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/main/about_page.php ./web/interface/main/about_page.php
+--- ./openemr.v5.0.1.4/interface/main/about_page.php	2018-09-22 08:45:58.556807574 +0000
++++ ./web/interface/main/about_page.php	2018-09-10 11:37:13.666104799 +0000
+@@ -39,7 +39,7 @@
+ <head>
+ 
+     <?php Header::setupHeader(["jquery-ui","jquery-ui-darkness"]); ?>
+-    <title><?php echo xl("About");?> OpenEMR</title>
++    <title><?php echo xl("About");?> MedicEMR</title>
+     <style>
+         .donations-needed {
+             margin-top: 25px;
+@@ -105,8 +105,23 @@
+                     productRegistrationController.displayRegistrationInformationIfDivExists(data);
+                 }
+             });
++            
++						jQuery('#donation_medicaddr_click').on('click', function(){
++						    var textArea = document.createElement("textarea");
++						    textArea.value = $('#donation_medicaddr').text();
++						    document.body.appendChild(textArea);
++						    textArea.select();
++						    document.execCommand("Copy");
++						    textArea.remove();
++						    $('#donation_medicaddr_copied').show().addClass('text-success');
++                return false;
++            });
+         });
+     </script>
++
++    <script type="text/javascript">
++
++    </script>
+ </head>
+ <?php
+ $versionService = new VersionService();
+@@ -117,7 +132,13 @@
+         <div class="row">
+             <div class="col-xs-12 col-md-4 col-md-offset-4 text-center">
+                 <div class="page-header">
+-                    <h1><?php echo xlt("About");?>&nbsp;OpenEMR</h1>
++                    <h1><?php echo xlt("About");?>&nbsp;MedicEMR</h1>
++                    <p>MedicEMR combines the opensource OpenEMR software with Medic Coin blockchain technology to create the first free opensource EMR software, MedicEMR, accepting crypto as a form of payment.</p>
++                </div>
++                <div class="page-header">
++                    <h2><?php echo xlt("About");?>&nbsp;Medic Coin</h2>
++                    <p>MedicCoin (MEDIC) is a community-driven crypto focused on improving the health of people throughout the world via innovative reward programs, recruiting others to help advance scientific research and donating to charities.</p>
++                	<a href="http://mediccoin.com" target="_blank" class="btn btn-default btn-block"><img border="0" height="16" src="<?php echo $GLOBALS['images_static_relative']; ?>/menu-logo.png"> Medic Coin homepage</a>
+                 </div>
+                 <h4><?php  echo xlt('Version Number'); ?>: <?php echo "v".text($openemr_version) ?></h4>
+                 <span class="text product-registration"><span class="email"></span> <span class="id"></span></span><br>
+@@ -133,6 +154,14 @@
+                     <span class="text"><?php echo xlt("Please consider sending in a donation to"); ?> OpenEMR:</span><br>
+                     <a href="http://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=V6EVVTYYK264C" target="_blank" class="btn btn-lg btn-block"><i class="fa fa-2x fa-heart"></i><br/><?php echo xlt("DONATE NOW!"); ?></a>
+                 </div>
++                <div class="donations-needed">
++                    <span class="text"><?php echo xlt("Please consider sending in a donation to"); ?> MedicEMR:</span><br>
++                    <a id="donation_medicaddr_click" href="https://explorer.mediccoin.com/address/MWFwbBLJeicbDqQWLbGBCgPmiLLcPzrgro" target="_blank" class="btn btn-lg btn-block">
++                    	<img style="padding: 20px" src="https://explorer.mediccoin.com/qr/MWFwbBLJeicbDqQWLbGBCgPmiLLcPzrgro" />
++                    	<br/><br/><span id="donation_medicaddr">MWFwbBLJeicbDqQWLbGBCgPmiLLcPzrgro</span>
++                    	<br /><br />(Click to copy address) <span id="donation_medicaddr_copied" style="display:none">copied!</span>
++                    </a>
++                </div>
+             </div>
+         </div>
+ 
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/main/tabs/main.php ./web/interface/main/tabs/main.php
+--- ./openemr.v5.0.1.4/interface/main/tabs/main.php	2018-09-22 08:45:58.580809515 +0000
++++ ./web/interface/main/tabs/main.php	2018-09-08 15:46:36.845890311 +0000
+@@ -203,7 +203,7 @@
+ <div id="mainBox" <?php echo $disp_mainBox ?>>
+     <div id="dialogDiv"></div>
+     <div class="body_top">
+-        <a href="http://www.open-emr.org" title="OpenEMR <?php echo xla("Website"); ?>" target="_blank"><img class="logo" alt="openEMR small logo"  border="0" src="<?php echo $GLOBALS['images_static_relative']; ?>/menu-logo.png"></a>
++        <a href="http://medicemr.com" title="MedicEMR <?php echo xla("Website"); ?>" target="_blank"><img class="logo" alt="MedicEMR small logo"  border="0" src="<?php echo $GLOBALS['images_static_relative']; ?>/menu-logo.png"></a>
+         <span id="menu logo" data-bind="template: {name: 'menu-template', data: application_data} "></span>
+         <span id="userData" data-bind="template: {name: 'user-data-template', data:application_data} "></span>
+     </div>
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/modules/zend_modules/config/application.config.php ./web/interface/modules/zend_modules/config/application.config.php
+--- ./openemr.v5.0.1.4/interface/modules/zend_modules/config/application.config.php	2018-09-22 08:45:58.584809839 +0000
++++ ./web/interface/modules/zend_modules/config/application.config.php	2018-09-04 02:01:18.000000000 +0000
+@@ -1,24 +1 @@
+-<?php
+-
+-return array(
+-    'modules' =>  array(
+-        '0' => 'Application',
+-        '1' => 'Installer',
+-        '2' => 'Acl',
+-        '3' => 'Carecoordination',
+-        '4' => 'Ccr',
+-        '5' => 'Documents',
+-        '6' => 'Immunization',
+-        '7' => 'Syndromicsurveillance',
+-        '8'=> 'Patientvalidation',
+-    ),
+-    'module_listener_options' =>  array(
+-        'config_glob_paths' =>  array(
+-            '0' => 'config/autoload/{,*.}{global,local}.php',
+-        ),
+-        'module_paths' =>  array(
+-            '0' => './module',
+-            '1' => './vendor',
+-        ),
+-    ),
+-);
++<?php return array( 'modules' =>  array( '0' => 'Application', '1' => 'Installer', '2' => 'Acl', '3' => 'Carecoordination', '4' => 'Ccr', '5' => 'Documents', '6' => 'Immunization', '7' => 'Syndromicsurveillance', '8' => 'Patientvalidation', '9' => 'Multipledb', ), 'module_listener_options' =>  array( 'config_glob_paths' =>  array( '0' => 'config/autoload/{,*.}{global,local}.php', ), 'module_paths' =>  array( '0' => './module', '1' => './vendor', ), ),);
+\ No newline at end of file
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/patient_file/front_payment.php ./web/interface/patient_file/front_payment.php
+--- ./openemr.v5.0.1.4/interface/patient_file/front_payment.php	2018-09-22 08:45:58.640814368 +0000
++++ ./web/interface/patient_file/front_payment.php	2018-09-12 06:47:39.728731627 +0000
+@@ -137,7 +137,16 @@
+ 
+         return $total;
+     }
+-
++    
++    ### Begin Medic Coin Module ###
++    if (!function_exists('cformat'))
++    {
++        function cformat($float) { // cformat = 'Crypto Format'
++        	return sprintf('%0.8f', $float);
++        }
++    }
++    ### End Medic Coin Module ###
++    
+     $now = time();
+     $today = date('Y-m-d', $now);
+     $timestamp = date('Y-m-d H:i:s', $now);
+@@ -154,6 +163,10 @@
+ 
+     $alertmsg = ''; // anything here pops up in an alert box
+ 
++    ### End Medic Coin Module ###
++    $fee_medicaddress = $GLOBALS['medic_address'];
++    ### Begin Medic Coin Module ###
++
+     // If the Save button was clicked...
+     if ($_POST['form_save']) {
+         $form_pid = $_POST['form_pid'];
+@@ -162,6 +175,14 @@
+         $patdata = getPatientData($form_pid, 'fname,mname,lname,pubpid');
+         $NameNew = $patdata['fname'] . " " . $patdata['lname'] . " " . $patdata['mname'];
+ 
++        ### Begin Medic Coin Module ###
++        $medic_prepaytotal = floatval($_POST['form_prepayment_medic']);
++        $medic_paytotal = floatval($_POST['form_paytotal_medic']);
++        $medic_address = trim($_POST['fee_medicaddress']);
++        $medic_txID = trim($_POST['txID']);
++        $medic_usd = floatval($_POST['medic_usd']);
++        /*
++        ### End Medic Coin Module ###
+         if ($_REQUEST['radio_type_of_payment'] == 'pre_payment') {
+             $payment_id = idSqlStatement(
+                 "insert into ar_session set " .
+@@ -182,7 +203,33 @@
+ 
+             frontPayment($form_pid, 0, $form_method, $form_source, $_REQUEST['form_prepayment'], 0, $timestamp);//insertion to 'payments' table.
+         }
++        ### Begin Medic Coin Module ###
++        */
++        if ($_REQUEST['radio_type_of_payment'] == 'pre_payment') {
++            $payment_id = idSqlStatement(
++                "insert into ar_session set " .
++                "payer_id = ?" .
++                ", patient_id = ?" .
++                ", user_id = ?" .
++                ", closed = ?" .
++                ", reference = ?" .
++                ", check_date =  now() , deposit_date = now() " .
++                ",  pay_total = ?" .
++                ", payment_type = 'patient'" .
++                ", description = ?" .
++                ", adjustment_code = 'pre_payment'" .
++                ", post_to_date = now() " .
++                ", payment_method = ?" .
++                ", medic_paytotal = ?" .
++                ", medic_address = ?" .
++                ", medic_txID = ?",
++                array(0, $form_pid, $_SESSION['authUserID'], 0, $form_source, $_REQUEST['form_prepayment'], $NameNew, $form_method, $medic_prepaytotal, $medic_address, $medic_txID)
++            );
+ 
++            frontPayment($form_pid, 0, $form_method, $form_source, $_REQUEST['form_prepayment'], 0, $timestamp, '', $medic_prepaytotal, 0, $medic_address, $medic_txID);//insertion to 'payments' table.
++        }
++        ### End Medic Coin Module ###
++        
+         if ($_POST['form_upay'] && $_REQUEST['radio_type_of_payment'] != 'pre_payment') {
+             foreach ($_POST['form_upay'] as $enc => $payment) {
+                 if ($amount = 0 + $payment) {
+@@ -213,26 +260,60 @@
+                         $Code = '';
+                         $Modifier = '';
+                     }
+-
++                    
++                    ### Begin Medic Coin Module ###
++                    $medic_amount = cformat($amount/$medic_usd);
++                    ### End Medic Coin Module ###
++                    
+                     //----------------------------------------------------------------------------------------------------
+                     if ($_REQUEST['radio_type_of_payment'] == 'copay') {//copay saving to ar_session and ar_activity tables
++                        ### Begin Medic Coin Module ###
++                        /*
++                        ### End Medic Coin Module ###
+                         $session_id = sqlInsert(
+                             "INSERT INTO ar_session (payer_id,user_id,reference,check_date,deposit_date,pay_total," .
+                             " global_amount,payment_type,description,patient_id,payment_method,adjustment_code,post_to_date) " .
+                             " VALUES ('0',?,?,now(),now(),?,'','patient','COPAY',?,?,'patient_payment',now())",
+                             array($_SESSION['authId'], $form_source, $amount, $form_pid, $form_method)
+                         );
+-
++                        ### Begin Medic Coin Module ###
++                        */
++                        $session_id = sqlInsert(
++                            "INSERT INTO ar_session (payer_id,user_id,reference,check_date,deposit_date,pay_total," .
++                            " global_amount,payment_type,description,patient_id,payment_method,adjustment_code,post_to_date, medic_paytotal, medic_address, medic_txID) " .
++                            " VALUES ('0',?,?,now(),now(),?,'','patient','COPAY',?,?,'patient_payment',now(),?,?,?)",
++                            array($_SESSION['authId'], $form_source, $amount, $form_pid, $form_method, $medic_amount, $medic_address, $medic_txID)
++                        );
++                        ### End Medic Coin Module ###
++                        
+                         sqlBeginTrans();
+                         $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?", array($form_pid, $enc));
++                        ### Begin Medic Coin Module ###
++                        /*
++                        ### End Medic Coin Module ###
+                         $insrt_id = sqlInsert(
+                             "INSERT INTO ar_activity (pid,encounter,sequence_no,code_type,code,modifier,payer_type,post_time,post_user,session_id,pay_amount,account_code)" .
+                             " VALUES (?,?,?,?,?,?,0,now(),?,?,?,'PCP')",
+                             array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, $_SESSION['authId'], $session_id, $amount)
+                         );
++                        ### Begin Medic Coin Module ###
++                        */
++                        $insrt_id = sqlInsert(
++                            "INSERT INTO ar_activity (pid,encounter,sequence_no,code_type,code,modifier,payer_type,post_time,post_user,session_id,pay_amount,account_code,medic_payamount,medic_address,medic_txID)" .
++                            " VALUES (?,?,?,?,?,?,0,now(),?,?,?,'PCP',?,?,?)",
++                            array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, $_SESSION['authId'], $session_id, $amount, $medic_amount, $medic_address, $medic_txID)
++                        );
++                        ### End Medic Coin Module ###
+                         sqlCommitTrans();
+-
++                        
++                        ### Begin Medic Coin Module ###
++                        /*
++                        ### End Medic Coin Module ###
+                         frontPayment($form_pid, $enc, $form_method, $form_source, $amount, 0, $timestamp);//insertion to 'payments' table.
++                        ### Begin Medic Coin Module ###
++                        */
++                        frontPayment($form_pid, $enc, $form_method, $form_source, $amount, 0, $timestamp, '', $medic_amount, 0, $medic_address, $medic_txID);//insertion to 'payments' table.
++                        ### End Medic Coin Module ###
+                     }
+ 
+                     if ($_REQUEST['radio_type_of_payment'] == 'invoice_balance' || $_REQUEST['radio_type_of_payment'] == 'cash') {                //Payment by patient after insurance paid, cash patients similar to do not bill insurance in feesheet.
+@@ -248,6 +329,9 @@
+                         }
+ 
+                         $adjustment_code = 'patient_payment';
++                        ### Begin Medic Coin Module ###
++                        /*
++                        ### End Medic Coin Module ###
+                         $payment_id = idSqlStatement(
+                             "insert into ar_session set " .
+                             "payer_id = ?" .
+@@ -268,9 +352,35 @@
+                         //--------------------------------------------------------------------------------------------------------------------
+ 
+                         frontPayment($form_pid, $enc, $form_method, $form_source, 0, $amount, $timestamp);//insertion to 'payments' table.
++                        ### Begin Medic Coin Module ###
++                        */
++                        $payment_id = idSqlStatement(
++                            "insert into ar_session set " .
++                            "payer_id = ?" .
++                            ", patient_id = ?" .
++                            ", user_id = ?" .
++                            ", closed = ?" .
++                            ", reference = ?" .
++                            ", check_date =  now() , deposit_date = now() " .
++                            ",  pay_total = ?" .
++                            ", payment_type = 'patient'" .
++                            ", description = ?" .
++                            ", adjustment_code = ?" .
++                            ", post_to_date = now() " .
++                            ", payment_method = ?" .
++                            ", medic_paytotal = ?" .
++                            ", medic_address = ?" .
++                            ", medic_txID = ?",
++                            array(0, $form_pid, $_SESSION['authUserID'], 0, $form_source, $amount, $NameNew, $adjustment_code, $form_method, $medic_amount, $medic_address, $medic_txID)
++                        );
+ 
+                         //--------------------------------------------------------------------------------------------------------------------
+ 
++                        frontPayment($form_pid, $enc, $form_method, $form_source, 0, $amount, $timestamp, '', 0, $medic_amount, $medic_address, $medic_txID);//insertion to 'payments' table.
++                        ### End Medic Coin Module ###
++                        
++                        //--------------------------------------------------------------------------------------------------------------------
++
+                         $resMoneyGot = sqlStatement(
+                             "SELECT sum(pay_amount) as PatientPay FROM ar_activity where pid =? and " .
+                             "encounter =? and payer_type=0 and account_code='PCP'",
+@@ -316,13 +426,20 @@
+                                 if ($amount - $Remainder >= 0) {
+                                     $insert_value = $Remainder;
+                                     $amount = $amount - $Remainder;
++                                    
+                                 } else {
+                                     $insert_value = $amount;
+                                     $amount = 0;
+                                 }
+-
++                                ### Begin Medic Coin Module ###
++                                $medic_insert_value = cformat($insert_value/$medic_usd);
++                                $medic_amount = cformat($medic_amount/$medic_usd);
++                                ### End Medic Coin Module ###
+                                 sqlBeginTrans();
+                                 $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?", array($form_pid, $enc));
++                                ### Begin Medic Coin Module ###
++                                /*
++                                ### End Medic Coin Module ###
+                                 sqlStatement(
+                                     "insert into ar_activity set " .
+                                     "pid = ?" .
+@@ -340,12 +457,39 @@
+                                     ", account_code = 'PP'",
+                                     array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, 0, $_SESSION['authUserID'], $payment_id, $insert_value, 0)
+                                 );
++                                ### Begin Medic Coin Module ###
++                                */
++                                sqlStatement(
++                                    "insert into ar_activity set " .
++                                    "pid = ?" .
++                                    ", encounter = ?" .
++                                    ", sequence_no = ?" .
++                                    ", code_type = ?" .
++                                    ", code = ?" .
++                                    ", modifier = ?" .
++                                    ", payer_type = ?" .
++                                    ", post_time = now() " .
++                                    ", post_user = ?" .
++                                    ", session_id = ?" .
++                                    ", pay_amount = ?" .
++                                    ", adj_amount = ?" .
++                                    ", account_code = 'PP'" .
++                                    ", medic_payamount = ?" .
++                                    ", medic_adjamount = ?" .
++                                    ", medic_address = ?" .
++                                    ", medic_txID = ?" ,
++                                    array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, 0, $_SESSION['authUserID'], $payment_id, $insert_value, 0, $medic_insert_value, 0, $medic_address, $medic_txID)
++                                );
++                                ### End Medic Coin Module ###
+                                 sqlCommitTrans();
+                             }//if
+                         }//while
+                         if ($amount != 0) {//if any excess is there.
+                             sqlBeginTrans();
+                             $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?", array($form_pid, $enc));
++                            ### Begin Medic Coin Module ###
++                            /*
++                            ### End Medic Coin Module ###
+                             sqlStatement(
+                                 "insert into ar_activity set " .
+                                 "pid = ?" .
+@@ -363,6 +507,30 @@
+                                 ", account_code = 'PP'",
+                                 array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, 0, $_SESSION['authUserID'], $payment_id, $amount, 0)
+                             );
++                            ### Begin Medic Coin Module ###
++                            */
++                            sqlStatement(
++                                "insert into ar_activity set " .
++                                "pid = ?" .
++                                ", encounter = ?" .
++                                ", sequence_no = ?" .
++                                ", code_type = ?" .
++                                ", code = ?" .
++                                ", modifier = ?" .
++                                ", payer_type = ?" .
++                                ", post_time = now() " .
++                                ", post_user = ?" .
++                                ", session_id = ?" .
++                                ", pay_amount = ?" .
++                                ", adj_amount = ?" .
++                                ", account_code = 'PP'" .
++                                ", medic_payamount = ?" .
++                                ", medic_adjamount = ?" .
++                                ", medic_address = ?" .
++                                ", medic_txID = ?" ,
++                                array($form_pid, $enc, $sequence_no['increment'], $Codetype, $Code, $Modifier, 0, $_SESSION['authUserID'], $payment_id, $amount, 0, $medic_amount, 0, $medic_address, $medic_txID)
++                            );
++                            ### End Medic Coin Module ###
+                             sqlCommitTrans();
+                         }
+ 
+@@ -386,9 +554,16 @@
+         $patdata = getPatientData($form_pid, 'fname,mname,lname,pubpid');
+ 
+     // Re-fetch payment info.
++        
+         $payrow = sqlQuery("SELECT " .
+         "SUM(amount1) AS amount1, " .
+         "SUM(amount2) AS amount2, " .
++        ### Begin Medic Coin Module ###
++        "SUM(medic_amount1) AS medic_amount1, " .
++        "SUM(medic_amount2) AS medic_amount2, " .
++        "MAX(medic_address) AS medic_address, " .
++        "MAX(medic_txID) AS medic_txID, " .
++        ### End Medic Coin Module ###
+         "MAX(method) AS method, " .
+         "MAX(source) AS source, " .
+         "MAX(dtime) AS dtime, " .
+@@ -419,7 +594,7 @@
+     <?php Header::setupHeader(['jquery-ui']); ?>
+ 
+     <script language="JavaScript">
+-
++        
+         <?php require($GLOBALS['srcdir'] . "/restoreSession.php"); ?>
+ 
+         $(document).ready(function () {
+@@ -520,7 +695,17 @@
+         </tr>
+         <tr>
+             <td><?php echo xlt('Amount for This Visit'); ?>:</td>
+-            <td><?php echo text(oeFormatMoney($payrow['amount1'])) ?></td>
++            <td><?php
++                    ### Begin Medic Coin Module ###
++                    /*
++                    ### End Medic Coin Module ###
++                    echo text(oeFormatMoney($payrow['amount1']))
++                    ### Begin Medic Coin Module ###
++                    */
++                    echo (text(oeFormatMoney($payrow['amount1'])) . ($_REQUEST['form_method'] == 'mediccoin' ? text(' = ' . $payrow['medic_amount1'] . ' Medic') : ''));
++                    ### End Medic Coin Module ###
++                ?>
++            </td>
+         </tr>
+         <tr>
+             <td>
+@@ -533,8 +718,39 @@
+                 ?>
+                 :
+             </td>
+-            <td><?php echo text(oeFormatMoney($payrow['amount2'])) ?></td>
++            <td><?php 
++                    ### Begin Medic Coin Module ###
++                    /*
++                    ### End Medic Coin Module ###
++                    echo text(oeFormatMoney($payrow['amount2']))
++                    ### Begin Medic Coin Module ###
++                    */
++                    echo (text(oeFormatMoney($payrow['amount2'])) . ($_REQUEST['form_method'] == 'mediccoin' ? text(' = ' . $payrow['medic_amount2'] . ' Medic') : ''));
++                    ### End Medic Coin Module ###
++                 ?>
++            </td>
+         </tr>
++        <!-- Begin Medic Coin Module -->
++        <?php
++            if ($_REQUEST['form_method'] == 'mediccoin')
++            {
++                echo '<tr>';
++                echo '<td>' . xlt('Medic Coin Receive Address') . ':</td>';
++                echo '<td>' . text($payrow['medic_address']) . '</td>';
++                echo '</tr>';
++                
++                echo '<tr>';
++                echo '<td>' . xlt('QR code') . ':</td>';
++                echo '<td><img src="' . $GLOBALS['medic_qrcode_prefix'] . $payrow['medic_address'] . '"></td>';
++                echo '</tr>';
++
++                echo '<tr>';
++                echo '<td>' . xlt('Medic TxID') . ':</td>';
++                echo '<td>' . text($payrow['medic_txID']) . '</td>';
++                echo '</tr>';
++            }
++        ?>
++        <!-- End Medic Coin Module -->
+         <tr>
+             <td><?php echo xlt('Received By'); ?>:</td>
+             <td><?php echo text($payrow['user']) ?></td>
+@@ -624,6 +840,40 @@
+     <script language="JavaScript">
+         <?php require($GLOBALS['srcdir'] . "/restoreSession.php"); ?>
+ 
++        /* ### Begin Medic Coin Module ### */
++        var medic_usd = <?php echo $GLOBALS['medic_usd'];?>;
++        $(document).ready(function(){
++            if ($('#check_number').length)
++            {
++                if ($('#form_method').val() == 'check_payment' || $('#form_method').val() == 'bank_draft')
++                {
++                    $('#check_number').prop('disabled', false);
++                }
++                else
++                {
++                    $('#check_number').prop('disabled', true);
++                }
++            }
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                $('#paytotal_medic, .medic_payment_field').show();
++            }
++            else
++            {
++                $('#paytotal_medic, .medic_payment_field').hide();
++            }
++            $('#fee_medicaddress_copy').on('click', function(){
++                $('#fee_medicaddress').select();
++                document.execCommand('copy');
++                return false;
++            });
++        });
++        function update_prepayment_medic(obj)
++        {
++            $('#form_prepayment_medic').val(Number($(obj).val()/medic_usd).toFixed(8));
++        }
++        /* ### Begin Medic Coin Module ### */
++
+         function closeHow(e) {
+             if (top.tab_mode) {
+                 top.activateTabByName('pat', true);
+@@ -650,6 +900,9 @@
+                 }
+             }
+             f.form_paytotal.value = Number(total).toFixed(2);
++            /* ### Begin Medic Coin Module ### */
++            f.form_paytotal_medic.value = Number(total/medic_usd).toFixed(8);
++            /* ### End Medic Coin Module ### */
+             return true;
+         }
+ 
+@@ -688,6 +941,16 @@
+             else {
+                 document.getElementById('check_number').disabled = true;
+             }
++            /* ### Begin Medic Coin Module */
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                $('#paytotal_medic, .medic_payment_field').show();
++            }
++            else
++            {
++                $('#paytotal_medic, .medic_payment_field').hide();
++            }
++           /* ### End Medic Coin Module */
+         }
+ 
+         function validate() {
+@@ -787,6 +1050,19 @@
+                     }
+                 }
+             }
++            
++            /* ### Begin Medic Coin Module */
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                if (!$('#txID').val())
++                {
++                    alert("<?php echo addslashes(xl('Please Enter TxID')) ?>");
++                    $('#txID').focus();
++                    return false;
++                }
++            }
++            /* ### End Medic Coin Module */
++            
+             if (ok == -1) {
+                 if (confirm("<?php echo addslashes(xl('Would you like to save?')) ?>")) {
+                     return true;
+@@ -994,14 +1270,32 @@
+                                             if ($brow1112['option_id'] == 'electronic' || $brow1112['option_id'] == 'bank_draft') {
+                                                 continue;
+                                             }
+-
+                                             echo "<option value='" . htmlspecialchars($brow1112['option_id'], ENT_QUOTES) . "'>" . htmlspecialchars(xl_list_label($brow1112['title']), ENT_QUOTES) . "</option>";
+                                         }
+                                         ?>
+                                     </select>
+                                 </td>
+                             </tr>
+-
++                            <!-- Begin Medic Coin Module -->
++                            <tr class="medic_payment_field">
++                                <td class='text'>
++                                    <label><?php echo xla('Medic Coin Receive Address'); ?>:</label>
++                                </td>
++                                <td colspan='2'>
++                                    <input class="form-control" type='text' name='fee_medicaddress' id='fee_medicaddress' value='<?php echo $fee_medicaddress;?>' style='display:inline-block;width: 85%;' readonly />
++                                    <a role="button" id="fee_medicaddress_copy" class="btn btn-default" title="Copy" style="display: inline-block;float:right;"><i class="fa fa-copy"></i></a>
++                                    <p style="text-align: left;margin-top: 10px;"><img src="<?php echo ($GLOBALS['medic_qrcode_prefix'].$fee_medicaddress);?>" /></p>
++                                </td>
++                            </tr>
++                            <tr class="medic_payment_field">
++                                <td class='text'>
++                                    <label><?php echo xla('TxID'); ?>:</label>
++                                </td>
++                                <td colspan='2'>
++                                    <input name="txID" id="txID" type="text" class="form-control" title="<?php echo xla('txID'); ?>" value="" style="width: 100%;" />
++                                </td>
++                            </tr>
++                            <!-- End Medic Coin Module -->
+                             <tr height="5">
+                                 <td colspan='3'></td>
+                             </tr>
+@@ -1088,8 +1382,14 @@
+                                style="display:none">
+                             <tr>
+                                 <td class='detail'><?php echo htmlspecialchars(xl('Pre Payment'), ENT_QUOTES); ?></td>
+-                                <td><input type='text' name='form_prepayment' style='width:100px'/></td>
++                                <td><input type='text' name='form_prepayment' style='width:100px' onkeyup="update_prepayment_medic(this);" /></td>
++                            </tr>
++                            <!-- Begin Medic Coin Module -->
++                            <tr id="paytotal_prepayment_medic">
++                                <td class='detail'><?php echo htmlspecialchars(xl('Total in MEDIC'), ENT_QUOTES); ?></td>
++                                <td><input class="text form-control" type='text' name='form_prepayment_medic' id='form_prepayment_medic' style='width:110px' readonly /></td>
+                             </tr>
++                            <!-- End Medic Coin Module -->
+                         </table>
+                     </div>
+                     <table class="table table-condensed" id="table_display">
+@@ -1316,8 +1616,18 @@
+                             <input type='text' name='form_paytotal' value=''
+                                    style='color:#00aa00;width:50px' readonly/>
+                         </td>
++                        
+                     </tr>
+-
++                    <!-- Begin Medic Coin Module -->
++                    <tr id="paytotal_medic" bgcolor="#cccccc">
++                        <td class="dehead" align="right" colspan="10">
++                            <?php echo htmlspecialchars(xl('Total in MEDIC'), ENT_QUOTES); ?>
++                            <input type='text' class="text form-control" name='form_paytotal_medic' id='form_paytotal_medic' value=''
++                                   style='color:#00aa00;width:110px;display:inline-block;' readonly />
++                        </td>
++                    </tr>
++                    <input type='hidden' name='medic_usd' id='medic_usd' value='<?php echo $GLOBALS['medic_usd'];?>'/>
++                    <!-- End Medic Coin Module -->
+                     </table>
+ 
+                     <span class="text-center">
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/reports/pat_ledger.php ./web/interface/reports/pat_ledger.php
+--- ./openemr.v5.0.1.4/interface/reports/pat_ledger.php	2018-09-22 08:45:58.660815985 +0000
++++ ./web/interface/reports/pat_ledger.php	2018-09-18 13:31:29.796719103 +0000
+@@ -35,6 +35,19 @@
+ $pat_pid = $_GET['patient_id'];
+ $type_form = $_GET['form'];
+ 
++### Begin Medic Coin Module ###
++$medic_enc_chg = $medic_total_chg = 0;
++$medic_enc_pmt = $medic_total_pmt = 0;
++$medic_enc_adj = $medic_total_adj = 0;
++$medic_enc_bal = $medic_total_bal = 0;
++if (!function_exists('cformat'))
++{
++    function cformat($float) { // cformat = 'Crypto Format'
++    	return sprintf('%0.8f', $float);
++    }
++}
++### End Medic Coin Module ###
++
+ if (! acl_check('acct', 'rep')) {
+     die(xlt("Unauthorized access."));
+ }
+@@ -147,6 +160,30 @@
+ function PrintEncFooter()
+ {
+     global $enc_units, $enc_chg, $enc_pmt, $enc_adj, $enc_bal;
++    ### Begin Medic Coin Module ###
++    global $medic_enc_chg, $medic_enc_pmt, $medic_enc_adj, $medic_enc_bal;
++    
++    if($medic_enc_chg || $medic_enc_pmt || $medic_enc_adj || $medic_enc_bal)
++    {
++        $print_medic_enc_chg = floatval($medic_enc_chg) ? "&nbsp;|&nbsp;" . $medic_enc_chg : '';
++        $print_medic_enc_pmt = floatval($medic_enc_pmt) ? "&nbsp;|&nbsp;" . $medic_enc_pmt : '';
++        $print_medic_enc_adj = floatval($medic_enc_adj) ? "&nbsp;|&nbsp;" . $medic_enc_adj : '';
++        $print_medic_enc_bal = floatval($medic_enc_bal) ? "&nbsp;|&nbsp;" . $medic_enc_bal : '';
++        echo "<tr bgcolor='#DDFFFF'>";
++        echo "<td colspan='3'>&nbsp;</td>";
++        echo "<td class='detail'>". xlt('Encounter Balance').":</td>";
++        echo "<td class='detail' style='text-align: center;'>".text($enc_units)."</td>";
++        //echo "<td class='detail' style='text-align: center;'>".text(oeFormatMoney($enc_chg)) . $print_medic_enc_chg . "</td>";
++        echo "<td class='detail' style='text-align: center;'>".text(oeFormatMoney($enc_chg))."</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_pmt)) . $print_medic_enc_pmt . "</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_adj)) . $print_medic_enc_adj . "</td>";
++        //echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal)) . $print_medic_enc_bal . "</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal))."</td>";
++        echo "</tr>\n";
++    }
++    else
++    {
++    ### End Medic Coin Module ###
+     echo "<tr bgcolor='#DDFFFF'>";
+     echo "<td colspan='3'>&nbsp;</td>";
+     echo "<td class='detail'>". xlt('Encounter Balance').":</td>";
+@@ -156,11 +193,17 @@
+     echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_adj))."</td>";
+     echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal))."</td>";
+     echo "</tr>\n";
++    ### Begin Medic Coin Module ###
++    }
++    ### End Medic Coin Module ###
+ }
+ function PrintCreditDetail($detail, $pat, $unassigned = false)
+ {
+     global $enc_pmt, $total_pmt, $enc_adj, $total_adj, $enc_bal, $total_bal;
+     global $bgcolor, $orow, $enc_units, $enc_chg;
++    ### Begin Medic Coin Module
++    global $medic_enc_pmt, $medic_total_pmt, $medic_enc_adj, $medic_total_adj, $medic_enc_bal, $medic_total_bal, $enc_chg;
++    ### End Medic Coin Module   
+     foreach ($detail as $pmt) {
+         $uap_flag = false;
+         if ($unassigned) {
+@@ -245,7 +288,7 @@
+               $enc_adj = $enc_adj + $pmt['adj_amount'];
+               $total_adj = $total_adj + $pmt['adj_amount'];
+         }
+-
++        
+         $print_pmt = '';
+         if ($pmt_amt != 0) {
+             $print_pmt = oeFormatMoney($pmt_amt);
+@@ -259,11 +302,53 @@
+         $print_appl = $uac_appl ? oeFormatMoney($uac_appl) : "";
+         $print_bal = $uac_bal ? oeFormatMoney($uac_bal) : "";
+ 
++        ### Begin Medic Coin Module
++        if ($pmt['payment_method'] == 'mediccoin')
++        {
++            $medic_usd = floatval($pmt['medic_paytotal']) ? cformat($pmt['pay_total']/$pmt['medic_paytotal']) : 0;
++            
++            if ($unassigned) {
++                $medic_pmt_amt = $medic_usd ? cformat(($pmt['pay_total'] - $pmt['applied'])/$medic_usd) : 0;
++                $medic_uac_bal = $medic_pmt_amt*-1;
++                $medic_uac_appl = $medic_usd ? cformat($pmt['applied']/$medic_usd) : 0;
++                $medic_uac_total = $medic_usd ? cformat($pmt['pay_total']/$medic_usd) : 0;
++                $medic_pmt_amt = $medic_usd ? cformat($pmt['pay_total']/$medic_usd) : 0;
++                $medic_total_pmt = cformat($medic_total_pmt-$medic_uac_bal);
++            } else {
++                $medic_uac_total = '';
++                $medic_uac_bal = '';
++                $medic_uac_appl = '';
++                $medic_pmt_amt = $pmt['medic_payamount'];
++                $medic_adj_amt = $pmt['medic_adjamount'];
++                $medic_enc_pmt = cformat($medic_enc_pmt + $pmt['medic_payamount']);
++                $medic_total_pmt = cformat($medic_total_pmt + $pmt['medic_payamount']);
++                $medic_enc_adj = cformat($medic_enc_adj + $pmt['medic_adjamount']);
++                $medic_total_adj = cformat($medic_total_adj + $pmt['medic_adjamount']);
++            }
++            if ($pmt_amt != 0) {
++                $print_medic_pmt = "&nbsp;|&nbsp;" . $medic_pmt_amt;
++            }
++            if ($adj_amt != 0) {
++                $print_medic_adj = "&nbsp;|&nbsp;" . $medic_adj_amt;
++            }
++            $print_medic_appl = floatval($uac_appl) ? "&nbsp;|&nbsp;" . $medic_uac_appl : "";
++            $print_medic_bal = floatval($uac_bal) ? "&nbsp;|&nbsp;" . $medic_uac_bal : "";
++        }
++        /*
++        ### End Medic Coin Module
+         $print .= "<td class='detail' style='text-align: center;'>".text($print_appl)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($print_pmt)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($print_adj)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($print_bal)."&nbsp;</td>";
+         $print .= "</tr>\n";
++        ### Begin Medic Coin Module
++        */
++        $print .= "<td class='detail' style='text-align: center;'>".text($print_appl). $print_medic_appl . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($print_pmt). $print_medic_pmt . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($print_adj). $print_medic_adj . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($print_bal). $print_medic_bal . "&nbsp;</td>";
++        $print .= "</tr>\n";
++        ### End Medic Coin Module
+         echo $print;
+         if ($pmt['follow_up_note'] != '') {
+             $bgcolor = (($bgcolor == "#FFFFDD") ? "#FFDDDD" : "#FFFFDD");
+@@ -281,7 +366,14 @@
+             $enc_bal = $enc_bal - $pmt_amt - $adj_amt;
+             $total_bal = $total_bal - $pmt_amt - $adj_amt;
+         }
+-
++        ### Begin Medic Coin Module
++        if ($unassigned) {
++            $medic_total_bal = cformat($medic_total_bal + $medic_uac_bal);
++        } else {
++            $medic_enc_bal = cformat($medic_enc_bal - $medic_pmt_amt - $medic_adj_amt);
++            $medic_total_bal = cformat($medic_total_bal - $medic_pmt_amt - $medic_adj_amt);
++        }
++        ### End Medic Coin Module
+         $orow++;
+     }
+ 
+@@ -664,9 +756,27 @@
+     <td class='bold' ><?php echo xlt('Billed Date'); ?> / <?php echo xlt('Payor'); ?></td>
+     <td class='bold' ><?php echo xlt('Type'); ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+     <?php echo xlt('Units'); ?></td>
+-    <td class='bold' >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Charge'); ?></td>
+-    <td align='right' class='bold' >&nbsp;&nbsp;<?php echo xlt('Payment'); ?></td>
+-    <td align='right' class='bold' >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Adjustment'); ?></td>
++    <td class='bold' >
++        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Charge'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
++    <td align='right' class='bold' >
++        &nbsp;&nbsp;<?php echo xlt('Payment'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
++    <td align='right' class='bold' >
++        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Adjustment'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
+     <td align='right' class='bold' >&nbsp;&nbsp;&nbsp;<?php echo xlt('Balance'); ?></td>
+  </tr>
+  <tr>
+@@ -713,6 +823,9 @@
+             }
+ 
+             $enc_units = $enc_chg = $enc_pmt = $enc_adj = $enc_bal = 0;
++            ### Begin Medic Coin Module ###
++            $medic_enc_chg = $medic_enc_pmt = $medic_enc_adj = $medic_enc_bal = 0;
++            ### End Medic Coin Module ###
+         }
+ 
+         if ($erow{'id'}) {
+@@ -754,7 +867,14 @@
+             $enc_chg += $erow['fee'];
+             $enc_bal += $erow['fee'];
+             $orow++;
+-
++            
++            ### Begin Medic Coin Module ###
++            //$medic_total_chg += $erow['fee'];
++            //$medic_total_bal += $erow['fee'];
++            //$medic_enc_chg += $erow['fee'];
++            //$medic_enc_bal += $erow['fee'];
++            ### End Medic Coin Module ###
++            
+             if ($_REQUEST['form_csvexport']) {
+                 echo $csv;
+             } else {
+@@ -797,6 +917,28 @@
+     }
+ 
+     if (!$_REQUEST['form_csvexport'] && $orow) {
++        ### Begin Medic Coin Module ###
++        if($medic_total_chg || $medic_total_pmt || $medic_total_adj || $medic_total_bal)
++        {
++            $print_medic_total_chg = floatval($medic_total_chg) ? "&nbsp;|&nbsp;" . $medic_total_chg : '';
++            $print_medic_total_pmt = floatval($medic_total_pmt) ? "&nbsp;|&nbsp;" . $medic_total_pmt : '';
++            $print_medic_total_adj = floatval($medic_total_adj) ? "&nbsp;|&nbsp;" . $medic_total_adj : '';
++            $print_medic_total_bal = floatval($medic_total_bal) ? "&nbsp;|&nbsp;" . $medic_total_bal : '';
++            echo "<tr bgcolor='#DDFFFF'>\n";
++            echo " <td colspan='2'>&nbsp;</td>";
++            echo " <td class='bold' colspan='2'>" . xlt("Grand Total") ."</td>\n";
++            echo " <td class='bold' style='text-align: center;'>". text($total_units) ."</td>\n";
++            //echo " <td class='bold' style='text-align: center;'>". text(oeFormatMoney($total_chg)) . $print_medic_total_chg  ."</td>\n";
++            echo " <td class='bold' style='text-align: center;'>". text(oeFormatMoney($total_chg)) ."</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_pmt)) . $print_medic_total_pmt  ."</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_adj)) . $print_medic_total_adj  ."</td>\n";
++            //echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . $print_medic_total_bal  . "</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . "</td>\n";
++            echo " </tr>\n";
++        }
++        else
++        {
++        ### End Medic Coin Module ###
+         echo "<tr bgcolor='#DDFFFF'>\n";
+         echo " <td colspan='2'>&nbsp;</td>";
+         echo " <td class='bold' colspan='2'>" . xlt("Grand Total") ."</td>\n";
+@@ -806,6 +948,9 @@
+         echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_adj)) ."</td>\n";
+         echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . "</td>\n";
+         echo " </tr>\n";
++        ### Begin Medic Coin Module ###
++        }
++        ### End Medic Coin Module ###
+         ?>
+         </table>
+         <tr><td>&nbsp;</td></tr><br><br>
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/interface/usergroup/ssl_certificates_admin.php ./web/interface/usergroup/ssl_certificates_admin.php
+--- ./openemr.v5.0.1.4/interface/usergroup/ssl_certificates_admin.php	2018-09-22 08:45:58.704819543 +0000
++++ ./web/interface/usergroup/ssl_certificates_admin.php	2018-09-08 15:46:36.845890311 +0000
+@@ -291,7 +291,7 @@
+ 
+ 
+     /* Create the Certficate Authority (CA) */
+-    $arr = create_csr("OpenEMR CA for " . $commonName, $emailAddress, $countryName, $stateOrProvinceName, $localityName, $organizationName, $organizationalUnitName);
++    $arr = create_csr("MedicEMR CA for " . $commonName, $emailAddress, $countryName, $stateOrProvinceName, $localityName, $organizationName, $organizationalUnitName);
+ 
+     if ($arr === false) {
+         $error_msg .= xl('Error, unable to create the Certificate Authority certificate.', 'e');
+@@ -632,7 +632,7 @@
+         <td><?php xl('Organizational Unit Name', 'e'); ?>:</td>
+         <td><input name='organizationalUnitName' type='text' value=''></td>
+         <td><?php xl('Example', 'e');
+-        echo ': OpenEMR'; ?></td>
++        echo ': MedicEMR'; ?></td>
+       </tr>
+       <tr class='text'>
+         <td><?php xl('Locality', 'e'); ?>:</td>
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/classes/Installer.class.php ./web/library/classes/Installer.class.php
+--- ./openemr.v5.0.1.4/library/classes/Installer.class.php	2018-09-22 08:45:58.720820838 +0000
++++ ./web/library/classes/Installer.class.php	2018-09-08 17:01:48.740699268 +0000
+@@ -45,6 +45,8 @@
+         $this->icd9 = dirname(__FILE__) . "/../../sql/icd9.sql";
+         $this->cvx = dirname(__FILE__) . "/../../sql/cvx_codes.sql";
+         $this->additional_users = dirname(__FILE__) . "/../../sql/official_additional_users.sql";
++        $this->medicemr = dirname(__FILE__) . "/../../sql/medicemr.sql";
++        $this->medicemr_multisites = dirname(__FILE__) . "/../../sql/medicemr_multisites.sql";
+ 
+         // Record name of php-gacl installation files
+         $this->gaclSetupScript1 = dirname(__FILE__) . "/../../gacl/setup.php";
+@@ -704,6 +706,12 @@
+ 
+             $this->dumpfiles = $dumpfiles;
+         }
++        
++        $this->dumpfiles[ $this->medicemr ] = "MedicEMR";
++        if (defined('MEDICEMR_MULTISITES')) {
++        	$this->dumpfiles[ $this->medicemr_multisites ] = "MedicEMR MultiSites";
++        }
++        
+ 
+         return $this->dumpfiles;
+     }
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/crypto.php ./web/library/crypto.php
+--- ./openemr.v5.0.1.4/library/crypto.php	2018-09-22 08:45:58.756823749 +0000
++++ ./web/library/crypto.php	2018-09-08 15:46:36.889894087 +0000
+@@ -22,7 +22,7 @@
+ function aes256Encrypt($sValue, $customPassword = null, $baseEncode = true)
+ {
+     if (!extension_loaded('openssl')) {
+-        error_log("OpenEMR Error : Encryption is not working because missing openssl extension.");
++        error_log("MedicEMR Error : Encryption is not working because missing openssl extension.");
+     }
+ 
+     if (empty($customPassword)) {
+@@ -48,7 +48,7 @@
+     );
+ 
+     if ($sValue != "" && $processedValue == "") {
+-        error_log("OpenEMR Error : Encryption is not working.");
++        error_log("MedicEMR Error : Encryption is not working.");
+     }
+ 
+     // prepend the encrypted value with the $iv
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/globals.inc.php ./web/library/globals.inc.php
+--- ./openemr.v5.0.1.4/library/globals.inc.php	2018-09-22 08:45:58.832829895 +0000
++++ ./web/library/globals.inc.php	2018-09-18 11:40:08.031750532 +0000
+@@ -3347,4 +3347,22 @@
+         ),
+ 
+     ),
++    ### Begin Medic Coin Module ###
++    'MedicCoin' => array(
++        'medic_address' => array(
++            xl('Medic Coin Receive Address'),
++            'text',
++            'MWFwbBLJeicbDqQWLbGBCgPmiLLcPzrgro',
++            xl('Setup Default Medic Coin Receive Address')
++        ),
++        'medic_currency' => array(
++            xl('Currency In Medic'),
++            array(
++                'USD' => xl('USD'),
++            ),
++            'USD',
++            xl('Convert selected currency to Medic Coin')
++        ),
++    ),
++    ### End Medic Coin Module ###
+ );
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/payment.inc.php ./web/library/payment.inc.php
+--- ./openemr.v5.0.1.4/library/payment.inc.php	2018-09-22 08:45:59.212860625 +0000
++++ ./web/library/payment.inc.php	2018-09-10 18:48:42.361840139 +0000
+@@ -27,7 +27,20 @@
+ 
+ // Post a payment to the payments table.
+ //
++### Begin Medic Coin Module ###
++if (!function_exists('cformat'))
++{
++    function cformat($float) { // cformat = 'Crypto Format'
++    	return sprintf('%0.8f', $float);
++    }
++}
++/*
++### End Medic Coin Module ###
+ function frontPayment($patient_id, $encounter, $method, $source, $amount1, $amount2, $timestamp, $auth = "")
++### Begin Medic Coin Module ###
++*/
++function frontPayment($patient_id, $encounter, $method, $source, $amount1, $amount2, $timestamp, $auth = "", $medic_amount1 = 0, $medic_amount2 = 0, $medic_address = '', $medic_txID = '')
++### End Medic Coin Module ###
+ {
+ 
+     if (empty($auth)) {
+@@ -42,6 +55,9 @@
+         //the manipulation is done to insert the amount paid into payments table in correct order to show in front receipts report,
+         //if the payment is for today's encounter it will be shown in the report under today field and otherwise shown as previous
+     $tmprowArray=explode(' ', $tmprow['date']);
++    ### Begin Medic Coin Module ###
++    /*
++    ### End Medic Coin Module ###
+     if (date('Y-m-d')==$tmprowArray[0]) {
+         if ($amount1==0) {
+               $amount1=$amount2;
+@@ -53,15 +69,37 @@
+               $amount1=0;
+         }
+     }
+-
++    
+     $payid = sqlInsert("INSERT INTO payments ( " .
+     "pid, encounter, dtime, user, method, source, amount1, amount2 " .
+     ") VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)", array($patient_id,$encounter,$timestamp,$auth,$method,$source,$amount1,$amount2));
++    ### Begin Medic Coin Module ###
++    */
++    if (date('Y-m-d')==$tmprowArray[0]) {
++        if ($amount1==0) {
++              $amount1=$amount2;
++              $amount2=0;
++              $medic_amount1 = $medic_amount2;
++              $medic_amount2 = 0;
++        }
++    } else {
++        if ($amount2==0) {
++              $amount2=$amount1;
++              $amount1=0;
++              $medic_amount2 = $medic_amount1;
++              $medic_amount1 = 0;
++        }
++    }
++    
++    $payid = sqlInsert("INSERT INTO payments ( " .
++    "pid, encounter, dtime, user, method, source, amount1, amount2, medic_amount1, medic_amount2, medic_address, medic_txID " .
++    ") VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", array($patient_id,$encounter,$timestamp,$auth,$method,$source,$amount1,$amount2,$medic_amount1,$medic_amount2, $medic_address, $medic_txID));
++    ### End Medic Coin Module ###
+     return $payid;
+ }
+ 
+ //===============================================================================
+-//This section handles the common functins of payment screens.
++//This section handles the common functions of payment screens.
+ //===============================================================================
+ function DistributionInsert($CountRow, $created_time, $user_id)
+ {
+@@ -69,6 +107,12 @@
+  //It automatically pushes to next insurance for billing.
+  //In the screen a drop down of Ins1,Ins2,Ins3,Pat are given.The posting can be done for any level.
+     $Affected='no';
++    ### Begin Medic Coin Module ###
++    $medic_usd = isset($_POST['medic_usd']) ? floatval($_POST['medic_usd']) : $GLOBALS['medic_usd'];
++    $medic_payment_amount = formData('medic_payment_amount') ? floatval(formData('medic_payment_amount')) : floatval($_POST['medic_payment_amount']);
++    $fee_medicaddress = formData('fee_medicaddress') ? trim(formData('fee_medicaddress')) : trim($_POST['fee_medicaddress']);
++    $medic_txID = formData('medic_txID') ? trim(formData('medic_txID')) : trim($_POST['medic_txID']);
++    ### End Medic Coin Module ###
+     if (isset($_POST["Payment$CountRow"]) && $_POST["Payment$CountRow"]*1>0) {
+         if (trim(formData('type_name'))=='insurance') {
+             if (trim(formData("HiddenIns$CountRow"))==1) {
+@@ -103,6 +147,11 @@
+         "', pay_amount = '" . trim(formData("Payment$CountRow"))  .
+         "', adj_amount = '"    . 0 .
+         "', account_code = '" . "$AccountCode"  .
++        ### Begin Medic Coin Module ###
++        "', medic_payamount = '" . cformat(floatval(formData("Payment$CountRow"))/$medic_usd)  .
++        "', medic_address = '" . "$fee_medicaddress"  .
++        "', medic_txID = '" . "$medic_txID"  .
++        ### End Medic Coin Module ###
+         "'");
+           sqlCommitTrans();
+           $Affected='yes';
+@@ -135,6 +184,11 @@
+         "', adj_amount = '"    . trim(formData("AdjAmount$CountRow")) .
+         "', memo = '" . "$AdjustString"  .
+         "', account_code = '" . "$AccountCode"  .
++        ### Begin Medic Coin Module ###
++        "', medic_adjamount = '" . cformat(floatval(formData("AdjAmount$CountRow"))/$medic_usd)  .
++        "', medic_address = '" . "$fee_medicaddress"  .
++        "', medic_txID = '" . "$medic_txID"  .
++        ### End Medic Coin Module ###
+         "'");
+            sqlCommitTrans();
+           $Affected='yes';
+@@ -182,6 +236,11 @@
+         "', pay_amount = '" . trim(formData("Takeback$CountRow"))*-1  .
+         "', adj_amount = '"    . 0 .
+         "', account_code = '" . "Takeback"  .
++        ### Begin Medic Coin Module ###
++        "', medic_payamount = '" . cformat(floatval(formData("Takeback$CountRow"))/$medic_usd)*-1  .
++        "', medic_address = '" . "$fee_medicaddress"  .
++        "', medic_txID = '" . "$medic_txID"  .
++        ### End Medic Coin Module ###
+         "'");
+            sqlCommitTrans();
+           $Affected='yes';
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/payment_jav.inc.php ./web/library/payment_jav.inc.php
+--- ./openemr.v5.0.1.4/library/payment_jav.inc.php	2018-09-22 08:45:59.212860625 +0000
++++ ./web/library/payment_jav.inc.php	2018-09-10 15:52:59.277831886 +0000
+@@ -482,6 +482,12 @@
+     document.getElementById('deposit_date').focus();
+     return false;
+    }
++    /* Begin Medic Coin Module */
++    if (!medic_validate_txid())
++    {
++        return false;
++    }
++    /* End Medic Coin Module */
+   return true;
+ }
+ //========================================================================================
+@@ -500,4 +506,19 @@
+          document.getElementById(PaymentTotal).innerHTML=Math.round((paymenttot)*100)/100;
+     }
+ }
+-</script>
++/* Begin Medic Coin Module */
++function medic_validate_txid()
++{
++    if(document.getElementById('payment_method').options[document.getElementById('payment_method').selectedIndex].value == 'mediccoin')
++    {    
++        if(document.getElementById('medic_txID').value=='')
++        {
++            alert("<?php echo htmlspecialchars(xl('Please Fill the Medic TxID'), ENT_QUOTES) ?>");
++            document.getElementById('medic_txID').focus();
++            return false;
++        }
++    }
++    return true;
++}
++/* End Medic Coin Module */
++</script>
+\ No newline at end of file
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/library/translation.inc.php ./web/library/translation.inc.php
+--- ./openemr.v5.0.1.4/library/translation.inc.php	2018-09-22 08:45:59.216860949 +0000
++++ ./web/library/translation.inc.php	2018-09-08 15:46:36.889894087 +0000
+@@ -56,6 +56,11 @@
+         }
+ 
+         $string = "$prepend" . "$string" . "$append";
++        
++        ### Added by MedicEMR ###
++        $string = str_replace('OpenEMR', 'MedicEMR', $string);
++        ### \ Added by MedicEMR ###
++        
+         if ($mode=='e') {
+              echo $string;
+         } else {
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/portal/index.php ./web/portal/index.php
+--- ./openemr.v5.0.1.4/portal/index.php	2018-09-22 08:45:59.308868389 +0000
++++ ./web/portal/index.php	2018-09-08 15:46:36.889894087 +0000
+@@ -214,7 +214,7 @@
+                 </tr>
+             </table>
+         </form>
+-        <div class="copyright"><?php echo xlt('Powered by');?> OpenEMR</div>
++        <div class="copyright"><?php echo xlt('Powered by');?> MedicEMR</div>
+       </div>
+     <?php } elseif (isset($_GET['requestNew'])) { ?>
+     <div id="wrapper" class="centerwrapper" style="text-align:center;" >
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/portal/patient/templates/_FormsHeader.tpl.php ./web/portal/patient/templates/_FormsHeader.tpl.php
+--- ./openemr.v5.0.1.4/portal/patient/templates/_FormsHeader.tpl.php	2018-09-22 08:45:59.336870653 +0000
++++ ./web/portal/patient/templates/_FormsHeader.tpl.php	2018-09-08 15:46:36.889894087 +0000
+@@ -30,7 +30,7 @@
+ <meta content="width=device-width, initial-scale=1, user-scalable=no"
+     name="viewport">
+ 
+-<meta name="description" content="OpenEMR Portal" />
++<meta name="description" content="MedicEMR Portal" />
+ <meta name="author" content="Form | sjpadgett@gmail.com" />
+ 
+ <!-- Styles -->
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/portal/portal_payment.php ./web/portal/portal_payment.php
+--- ./openemr.v5.0.1.4/portal/portal_payment.php	2018-09-22 08:45:59.336870653 +0000
++++ ./web/portal/portal_payment.php	2018-09-12 06:46:52.792707405 +0000
+@@ -188,7 +188,9 @@ $patdata = sqlQuery("SELECT " . "p.fname, p.mname, p.lname, p.pubpid,p.pid, i.co
+ ));
+ 
+ $alertmsg = ''; // anything here pops up in an alert box
+-
++### End Medic Coin Module ###
++$fee_medicaddress = $GLOBALS['medic_address'];
++### Begin Medic Coin Module ###
+ // If the Save button was clicked...
+ if ($_POST['form_save']) {
+ // $extra = json_decode($_POST['ajax_mode'], true);
+@@ -197,7 +199,15 @@ if ($_POST['form_save']) {
+     $form_source = trim($_POST['form_source']);
+     $patdata = getPatientData($form_pid, 'fname,mname,lname,pubpid');
+     $NameNew = $patdata['fname'] . " " . $patdata['lname'] . " " . $patdata['mname'];
+-
++    
++    ### Begin Medic Coin Module ###
++    $medic_prepaytotal = floatval($_POST['form_prepayment_medic']);
++    $medic_paytotal = floatval($_POST['form_paytotal_medic']);
++    $medic_address = trim($_POST['fee_medicaddress']);
++    $medic_txID = trim($_POST['txID']);
++    $medic_usd = isset($_POST['medic_usd']) ? floatval($_POST['medic_usd']) : $GLOBALS['medic_usd'];
++    /*
++    ### End Medic Coin Module ###
+     if ($_REQUEST['radio_type_of_payment'] == 'pre_payment') {
+         $payment_id = idSqlStatement("insert into ar_session set " . "payer_id = ?" . ", patient_id = ?" . ", user_id = ?" . ", closed = ?" . ", reference = ?" . ", check_date =  now() , deposit_date = now() " . ",  pay_total = ?" . ", payment_type = 'patient'" . ", description = ?" . ", adjustment_code = 'pre_payment'" . ", post_to_date = now() " . ", payment_method = ?", array(
+             0, $form_pid, $_SESSION['authUserID'], 0, $form_source, $_REQUEST['form_prepayment'], $NameNew, $form_method
+@@ -205,7 +215,16 @@ if ($_POST['form_save']) {
+ 
+         frontPayment($form_pid, 0, $form_method, $form_source, $_REQUEST['form_prepayment'], 0, $timestamp); // insertion to 'payments' table.
+     }
++    ### Begin Medic Coin Module ###
++    */
++    if ($_REQUEST['radio_type_of_payment'] == 'pre_payment') {
++        $payment_id = idSqlStatement("insert into ar_session set " . "payer_id = ?" . ", patient_id = ?" . ", user_id = ?" . ", closed = ?" . ", reference = ?" . ", check_date =  now() , deposit_date = now() " . ",  pay_total = ?" . ", payment_type = 'patient'" . ", description = ?" . ", adjustment_code = 'pre_payment'" . ", post_to_date = now() " . ", payment_method = ?, medic_paytotal = ?, medic_address = ?, medic_txID = ?", array (
++                0,$form_pid,$_SESSION['authUserID'],0,$form_source,$_REQUEST['form_prepayment'],$NameNew,$form_method, $medic_prepaytotal, $medic_address, $medic_txID
++        ));
+ 
++        frontPayment($form_pid, 0, $form_method, $form_source, $_REQUEST['form_prepayment'], 0, $timestamp, '', $medic_prepaytotal, 0, $medic_address, $medic_txID); // insertion to 'payments' table.
++    }
++    ### End Medic Coin Module ###
+     if ($_POST['form_upay'] && $_REQUEST['radio_type_of_payment'] != 'pre_payment') {
+         foreach ($_POST['form_upay'] as $enc => $payment) {
+             if ($amount = 0 + $payment) {
+@@ -231,17 +250,40 @@ if ($_POST['form_save']) {
+                     $Code = '';
+                     $Modifier = '';
+                 }
+-
++                
++                ### Begin Medic Coin Module ###
++                $medic_amount = cformat($amount/$medic_usd);
++                ### End Medic Coin Module ###
++                
+ // ----------------------------------------------------------------------------------------------------
+                 if ($_REQUEST['radio_type_of_payment'] == 'copay') { // copay saving to ar_session and ar_activity tables
++                    ### Begin Medic Coin Module ###
++                    /*
++                    ### End Medic Coin Module ###
+                     $session_id = idSqlStatement("INSERT INTO ar_session (payer_id,user_id,reference,check_date,deposit_date,pay_total," . " global_amount,payment_type,description,patient_id,payment_method,adjustment_code,post_to_date) " . " VALUES ('0',?,?,now(),now(),?,'','patient','COPAY',?,?,'patient_payment',now())", array(
+                         $_SESSION['authId'], $form_source, $amount, $form_pid, $form_method
+                     ));
+-
++                    ### Begin Medic Coin Module ###
++                    */
++                    $session_id = idSqlStatement("INSERT INTO ar_session (payer_id,user_id,reference,check_date,deposit_date,pay_total," . " global_amount,payment_type,description,patient_id,payment_method,adjustment_code,post_to_date, medic_paytotal, medic_address, medic_txID) " . " VALUES ('0',?,?,now(),now(),?,'','patient','COPAY',?,?,'patient_payment',now(),?,?,?)", array (
++                            $_SESSION['authId'],$form_source,$amount,$form_pid,$form_method, $medic_amount, $medic_address, $medic_txID
++                    ));
++                    sqlBeginTrans();
++                    $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?",
++                    array($form_pid, $enc));
++                    /*
++                    ### End Medic Coin Module ###
+                     $insrt_id = idSqlStatement("INSERT INTO ar_activity (pid,encounter,code_type,code,modifier,payer_type,post_time,post_user,session_id,pay_amount,account_code)" . " VALUES (?,?,?,?,?,0,now(),?,?,?,'PCP')", array($form_pid, $enc, $Codetype, $Code, $Modifier, '3', $session_id, $amount
+                     ));
+ 
+                     frontPayment($form_pid, $enc, $form_method, $form_source, $amount, 0, $timestamp); // insertion to 'payments' table.
++                    ### Begin Medic Coin Module ###
++                    */
++                    $insrt_id = idSqlStatement("INSERT INTO ar_activity (pid,encounter,sequence_no,code_type,code,modifier,payer_type,post_time,post_user,session_id,pay_amount,account_code,medic_payamount,medic_address,medic_txID)" . " VALUES (?,?,?,?,?,?,0,now(),?,?,?,'PCP',?,?,?)", array ($form_pid,$enc,$sequence_no['increment'],$Codetype,$Code,$Modifier,'3',$session_id,$amount, $medic_amount, $medic_address, $medic_txID
++                    ));
++                    sqlCommitTrans();
++                    frontPayment($form_pid, $enc, $form_method, $form_source, $amount, 0, $timestamp, '', $medic_amount, 0, $medic_address, $medic_txID); // insertion to 'payments' table.
++                    ### End Medic Coin Module ###
+                 }
+ 
+                 if ($_REQUEST['radio_type_of_payment'] == 'invoice_balance' || $_REQUEST['radio_type_of_payment'] == 'cash') { // Payment by patient after insurance paid, cash patients similar to do not bill insurance in feesheet.
+@@ -253,6 +295,9 @@ if ($_POST['form_save']) {
+                     }
+ 
+                     $adjustment_code = 'patient_payment';
++                    ### Begin Medic Coin Module ###
++                    /*
++                    ### End Medic Coin Module ###
+                     $payment_id = idSqlStatement("insert into ar_session set " . "payer_id = ?" . ", patient_id = ?" . ", user_id = ?" . ", closed = ?" . ", reference = ?" . ", check_date =  now() , deposit_date = now() " . ",  pay_total = ?" . ", payment_type = 'patient'" . ", description = ?" . ", adjustment_code = ?" . ", post_to_date = now() " . ", payment_method = ?", array(
+                         0, $form_pid, $_SESSION['authUserID'], 0, $form_source, $amount, $NameNew, $adjustment_code, $form_method
+                     ));
+@@ -260,7 +305,16 @@ if ($_POST['form_save']) {
+ // --------------------------------------------------------------------------------------------------------------------
+ 
+                     frontPayment($form_pid, $enc, $form_method, $form_source, 0, $amount, $timestamp); // insertion to 'payments' table.
++                    ### Begin Medic Coin Module ###
++                    */
++                    $payment_id = idSqlStatement("insert into ar_session set " . "payer_id = ?" . ", patient_id = ?" . ", user_id = ?" . ", closed = ?" . ", reference = ?" . ", check_date =  now() , deposit_date = now() " . ",  pay_total = ?" . ", payment_type = 'patient'" . ", description = ?" . ", adjustment_code = ?" . ", post_to_date = now() " . ", payment_method = ?, medic_paytotal = ?, medic_address = ?, medic_txID = ?", array (
++                            0,$form_pid,$_SESSION['authUserID'],0,$form_source,$amount,$NameNew,$adjustment_code,$form_method, $medic_amount, $medic_address, $medic_txID
++                    ));
++
++// --------------------------------------------------------------------------------------------------------------------
+ 
++                    frontPayment($form_pid, $enc, $form_method, $form_source, 0, $amount, $timestamp, '', 0, $medic_amount, $medic_address, $medic_txID); // insertion to 'payments' table.
++                    ### End Medic Coin Module ###
+ // --------------------------------------------------------------------------------------------------------------------
+ 
+                     $resMoneyGot = sqlStatement("SELECT sum(pay_amount) as PatientPay FROM ar_activity where pid =? and " . "encounter =? and payer_type=0 and account_code='PCP'", array($form_pid, $enc
+@@ -300,16 +354,41 @@ if ($_POST['form_save']) {
+                                 $insert_value = $amount;
+                                 $amount = 0;
+                             }
+-
++                            ### Begin Medic Coin Module ###
++                            $medic_insert_value = cformat($insert_value/$medic_usd);
++                            $medic_amount = cformat($medic_amount/$medic_usd);
++                            sqlBeginTrans();
++                            $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?", array($form_pid, $enc));
++                            /*
++                            ### End Medic Coin Module ###
+                             sqlStatement("insert into ar_activity set " . "pid = ?" . ", encounter = ?" . ", code_type = ?" . ", code = ?" . ", modifier = ?" . ", payer_type = ?" . ", post_time = now() " . ", post_user = ?" . ", session_id = ?" . ", pay_amount = ?" . ", adj_amount = ?" . ", account_code = 'PP'", array(
+                                 $form_pid, $enc, $Codetype, $Code, $Modifier, 0, 3, $payment_id, $insert_value, 0
+                             ));
++                            ### Begin Medic Coin Module ###
++                            */
++                            sqlStatement("insert into ar_activity set " . "pid = ?" . ", encounter = ?" . ", sequence_no = ?" . ", code_type = ?" . ", code = ?" . ", modifier = ?" . ", payer_type = ?" . ", post_time = now() " . ", post_user = ?" . ", session_id = ?" . ", pay_amount = ?" . ", adj_amount = ?" . ", account_code = 'PP', medic_payamount = ?, medic_adjamount = ?, medic_address = ?, medic_txID = ?", array (
++                                    $form_pid,$enc,$sequence_no['increment'],$Codetype,$Code,$Modifier,0,3,$payment_id,$insert_value,0, $medic_insert_value, 0, $medic_address, $medic_txID
++                            ));
++                            sqlCommitTrans();
++                            ### End Medic Coin Module ###
+                         } // if
+                     } // while
+                     if ($amount != 0) { // if any excess is there.
++                        ### Begin Medic Coin Module ###
++                        sqlBeginTrans();
++                        $sequence_no = sqlQuery("SELECT IFNULL(MAX(sequence_no),0) + 1 AS increment FROM ar_activity WHERE pid = ? AND encounter = ?", array($form_pid, $enc));
++                        /*
++                        ### End Medic Coin Module ###
+                         sqlStatement("insert into ar_activity set " . "pid = ?" . ", encounter = ?" . ", code_type = ?" . ", code = ?" . ", modifier = ?" . ", payer_type = ?" . ", post_time = now() " . ", post_user = ?" . ", session_id = ?" . ", pay_amount = ?" . ", adj_amount = ?" . ", account_code = 'PP'", array(
+                             $form_pid, $enc, $Codetype, $Code, $Modifier, 0, 3, $payment_id, $amount, 0
+                         ));
++                        ### Begin Medic Coin Module ###
++                        */
++                        sqlStatement("insert into ar_activity set " . "pid = ?" . ", encounter = ?" . ", sequence_no = ?" . ", code_type = ?" . ", code = ?" . ", modifier = ?" . ", payer_type = ?" . ", post_time = now() " . ", post_user = ?" . ", session_id = ?" . ", pay_amount = ?" . ", adj_amount = ?" . ", account_code = 'PP', medic_payamount = ?, medic_adjamount = ?, medic_address = ?, medic_txID = ?", array (
++                                $form_pid,$enc,$sequence_no['increment'],$Codetype,$Code,$Modifier,0,3,$payment_id,$amount,0, $medic_amount, 0, $medic_address, $medic_txID
++                        ));
++                        sqlCommitTrans();
++                        ### End Medic Coin Module ###
+                     }
+ 
+ // --------------------------------------------------------------------------------------------------------------------
+@@ -332,7 +411,14 @@ if ($_POST['form_save'] || $_REQUEST['receipt']) {
+     $patdata = getPatientData($form_pid, 'fname,mname,lname,pubpid');
+ 
+ // Re-fetch payment info.
+-    $payrow = sqlQuery("SELECT " . "SUM(amount1) AS amount1, " . "SUM(amount2) AS amount2, " . "MAX(method) AS method, " . "MAX(source) AS source, " . "MAX(dtime) AS dtime, " .
++    $payrow = sqlQuery("SELECT " . "SUM(amount1) AS amount1, " . "SUM(amount2) AS amount2, " .
++    ### Begin Medic Coin Module ###
++    "SUM(medic_amount1) AS medic_amount1, " .
++    "SUM(medic_amount2) AS medic_amount2, " .
++    "MAX(medic_address) AS medic_address, " .
++    "MAX(medic_txID) AS medic_txID, " .
++    ### End Medic Coin Module ###
++    "MAX(method) AS method, " . "MAX(source) AS source, " . "MAX(dtime) AS dtime, " .
+ // "MAX(user) AS user " .
+         "MAX(user) AS user, " . "MAX(encounter) as encounter " . "FROM payments WHERE " . "pid = ? AND dtime = ?", array($form_pid, $timestamp
+     ));
+@@ -426,12 +512,53 @@ WHERE encounter = ?", array($payrow['encounter']
+                 </tr>
+                 <tr>
+                     <td><?php echo xlt('Amount for This Visit'); ?>:</td>
+-                    <td><?php echo text(oeFormatMoney($payrow['amount1'])) ?></td>
++                    <td><?php
++                            ### Begin Medic Coin Module ###
++                            /*
++                            ### End Medic Coin Module ###
++                            echo text(oeFormatMoney($payrow['amount1']))
++                            ### Begin Medic Coin Module ###
++                            */
++                            echo (text(oeFormatMoney($payrow['amount1'])) . ($_REQUEST['form_method'] == 'mediccoin' ? text(' = ' . $payrow['medic_amount1'] . ' Medic') : ''));
++                            ### End Medic Coin Module ###
++                        ?>
++                    </td>
+                 </tr>
+                 <tr>
+                     <td><?php echo xlt('Amount for Past Balance'); ?>:</td>
+-                    <td><?php echo text(oeFormatMoney($payrow['amount2'])) ?></td>
++                    <td><?php
++                            ### Begin Medic Coin Module ###
++                            /*
++                            ### End Medic Coin Module ###
++                            echo text(oeFormatMoney($payrow['amount2']))
++                            ### Begin Medic Coin Module ###
++                            */
++                            echo (text(oeFormatMoney($payrow['amount2'])) . ($_REQUEST['form_method'] == 'mediccoin' ? text(' = ' . $payrow['medic_amount2'] . ' Medic') : ''));
++                            ### End Medic Coin Module ###
++                        ?>
++                    </td>
+                 </tr>
++                <!-- Begin Medic Coin Module -->
++                <?php
++                    if ($_REQUEST['form_method'] == 'mediccoin')
++                    {
++                        echo '<tr>';
++                        echo '<td>' . xlt('Medic Coin Receive Address') . ':</td>';
++                        echo '<td>' . text($payrow['medic_address']) . '</td>';
++                        echo '</tr>';
++                        
++                        echo '<tr>';
++                        echo '<td>' . xlt('QR code') . ':</td>';
++                        echo '<td><img src="' . $GLOBALS['medic_qrcode_prefix'] . $payrow['medic_address'] . '"></td>';
++                        echo '</tr>';
++
++                        echo '<tr>';
++                        echo '<td>' . xlt('Medic TxID') . ':</td>';
++                        echo '<td>' . text($payrow['medic_txID']) . '</td>';
++                        echo '</tr>';
++                    }
++                ?>
++                <!-- End Medic Coin Module -->
+                 <tr>
+                     <td><?php echo xlt('Received By'); ?>:</td>
+                     <td><?php echo text($payrow['user']) ?></td>
+@@ -471,7 +598,45 @@ WHERE encounter = ?", array($payrow['encounter']
+ <script type="text/javascript" src="<?php echo $GLOBALS['assets_static_relative']; ?>/jquery-creditcardvalidator-1-1-0/jquery.creditCardValidator.js"></script>
+ <script type="text/javascript" src="<?php echo $GLOBALS['webroot'] ?>/library/textformat.js?v=<?php echo $v_js_includes; ?>"></script>
+ 
+-    <script type="text/javascript">
++    <script type="text/javascript">  
++/* ### Begin Medic Coin Module ### */
++var medic_usd = <?php if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin'){echo htmlspecialchars($ccdata["medic_usd"]);}else{echo $GLOBALS['medic_usd'];} ?>;
++var medic_authUserID = <?php echo ($GLOBALS['authUserID'] ? $GLOBALS['authUserID'] : 0); ?>;
++$(document).ready(function(){
++    if ($('#check_number').length)
++    {
++        if ($('#form_method').val() == 'check_payment' || $('#form_method').val() == 'bank_draft')
++        {
++            $('#check_number').prop('disabled', false);
++        }
++        else
++        {
++            $('#check_number').prop('disabled', true);
++        }
++    }
++    if ($('#form_method').val() == 'mediccoin')
++    {
++        $('#openPayModal form').hide();
++        $('#paymediccoin, #paytotal_medic').show();
++    }
++    else
++    {
++        $('#openPayModal form').show();
++        $('#paymediccoin, #paytotal_medic').hide();
++    }
++    if (medic_authUserID && $('#form_method').val() == 'mediccoin')
++    {
++        $('#payfrm input').prop('disabled', true);
++    }
++});
++function update_prepayment_medic(obj)
++{
++    var prepayment_medic = Number($(obj).val()/medic_usd).toFixed(8);
++    $('#form_prepayment_medic').val(prepayment_medic);
++    $('#paymediccoin #paytotal_medic').val(prepayment_medic);
++}
++/* ### Begin Medic Coin Module ### */
++        
+         var mypcc = '1';
+         function calctotal() {
+             var flag = 0;
+@@ -488,6 +653,11 @@ WHERE encounter = ?", array($payrow['encounter']
+                 }
+             }
+             f.form_paytotal.value = Number(total).toFixed(2);
++            /* ### Begin Medic Coin Module ### */
++            var paytotal_medic = Number(total/medic_usd).toFixed(8)
++            f.form_paytotal_medic.value = paytotal_medic;
++            $('#paymediccoin #paytotal_medic').val(paytotal_medic);
++            /* ### End Medic Coin Module ### */
+             if (flag) {
+                 $('#payfrm')[0].reset();
+                 alert("<?php echo addslashes(xl('Negative payments not accepted')) ?>")
+@@ -523,6 +693,10 @@ WHERE encounter = ?", array($payrow['encounter']
+         }
+ 
+         function CheckVisible(MakeBlank) {//Displays and hides the check number text box.
++            /* ### Begin Medic Coin Module */
++           if ($('#check_number').length)
++           {
++           /* ### End Medic Coin Module */
+             if (document.getElementById('form_method').options[document.getElementById('form_method').selectedIndex].value == 'check_payment' ||
+                 document.getElementById('form_method').options[document.getElementById('form_method').selectedIndex].value == 'bank_draft') {
+                 document.getElementById('check_number').disabled = false;
+@@ -530,6 +704,19 @@ WHERE encounter = ?", array($payrow['encounter']
+             else {
+                 document.getElementById('check_number').disabled = true;
+             }
++            /* ### Begin Medic Coin Module */
++            }
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                $('#openPayModal form').hide();
++                $('#paymediccoin, #paytotal_medic').show();
++            }
++            else
++            {
++                $('#openPayModal form').show();
++                $('#paymediccoin, #paytotal_medic').hide();
++            }
++            /* ### End Medic Coin Module */
+         }
+ 
+         function validate() {
+@@ -744,11 +931,29 @@ WHERE encounter = ?", array($payrow['encounter']
+         }
+ 
+         //--------------------------------------------------------------------------------------------------//
+-        $('#paySubmit').click(function (e) {
++        /* ### Begin Medic Coin Module */
++        /*
++        ### End Medic Coin Module
++        $('#paySubmit').click( function(e) {
++        ### Begin Medic Coin Module 
++        */
++        $('#paySubmit, #paymedicSubmit').click( function(e) {
++        /* ### End Medic Coin Module */
+             e.preventDefault()
+             $("#mode").val("portal-save");
+             var inv_values = JSON.stringify(getFormObj('payfrm'));
++            /* ### Begin Medic Coin Module */
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                var extra_values=JSON.stringify(getFormObj('paymediccoin'));
++            }
++            else
++            {
++            /* ### End Medic Coin Module */
+             var extra_values = JSON.stringify(getFormObj('paycredit'));
++            /* ### Begin Medic Coin Module */
++            }
++            /* ### End Medic Coin Module */ 
+             var extra = "&inv_values=" + inv_values + "&extra_values=" + extra_values;
+ 
+             var flag = 0
+@@ -758,6 +963,24 @@ WHERE encounter = ?", array($payrow['encounter']
+                 url: liburl,
+                 data: $("#payfrm").serialize() + extra,
+                 beforeSend: function (xhr) {
++                    /* ### Begin Medic Coin Module */
++                    if ($('#form_method').val() == 'mediccoin')
++                    {
++                        if ($('#form_paytotal_medic').val() <= 0)
++                        {
++                            alert("<?php echo addslashes(xl('A Payment is Required! Invalid Total. Please input a payment line item entry.')) ?>");
++                            return false;
++                        }
++                        if (!$('#txID').val())
++                        {
++                            alert("<?php echo addslashes(xl('Please Enter TxID')) ?>");
++                            $('#txID').focus();
++                            return false;
++                        }
++                    }
++                    else
++                    {
++                    /* ### End Medic Coin Module */
+                     if (validateCC() !== true) return false;
+                     if ($('#pin').val() == "" || $('#ccname').val() == "" || $('#ccyear').val() == "" || $('#ccmonth').val() == "") {
+                         alert("<?php echo addslashes(xl('Invalid Credit Card Values: Please correct')) ?>")
+@@ -768,13 +991,27 @@ WHERE encounter = ?", array($payrow['encounter']
+                         alert("<?php echo addslashes(xl('Validation error: Fix and resubmit. This popup info is preserved!')) ?>")
+                         return false;
+                     }
++                    /* ### Begin Medic Coin Module */
++                    }
++                    /* ### End Medic Coin Module */
+                     $("#openPayModal .close").click()
+                 },
+                 error: function (qXHR, textStatus, errorThrow) {
+                     console.log("There was an error:" + errorThrow);
+                 },
+                 success: function (templateHtml, textStatus, jqXHR) {
++                    /* ### Begin Medic Coin Module */
++                    if ($('#form_method').val() == 'mediccoin')
++                    {
++                        alert("<?php echo addslashes(xl('Payment successfully sent for confirmation. You will be notified when payment is posted. Thank you')) ?>")
++                    }
++                    else
++                    {
++                    /* ### End Medic Coin Module */
+                     alert("<?php echo addslashes(xl('Payment successfully sent for authorization. You will be notified when payment is posted. Until payment is accepted and you are notified, you may resubmit this payment at anytime with new amounts or different credit card. Thank you')) ?>")
++                    /* ### Begin Medic Coin Module */
++                    }
++                    /* ### End Medic Coin Module */
+                     window.location.reload(false);
+                 }
+             });
+@@ -787,7 +1024,18 @@ WHERE encounter = ?", array($payrow['encounter']
+             var thisform = this;
+             $("#mode").val("review-save");
+             var inv_values = JSON.stringify(getFormObj('payfrm'));
++            /* ### Begin Medic Coin Module */
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                var extra_values=JSON.stringify(getFormObj('paymediccoin'));
++            }
++            else
++            {
++            /* ### End Medic Coin Module */
+             var extra_values = JSON.stringify(getFormObj('paycredit'));
++            /* ### Begin Medic Coin Module */
++            }
++            /* ### End Medic Coin Module */
+             var extra = "&inv_values=" + inv_values + "&extra_values=" + extra_values;
+ 
+             var flag = 0
+@@ -797,11 +1045,26 @@ WHERE encounter = ?", array($payrow['encounter']
+                 url: liburl,
+                 data: $("#payfrm").serialize() + extra,
+                 beforeSend: function (xhr) {
++                    /* ### Begin Medic Coin Module */
++                    if ($('#form_method').val() == 'mediccoin')
++                    {
++                        if ($('#form_paytotal_medic').val() <= 0)
++                        {
++                            alert("<?php echo addslashes(xl('A Payment is Required! Invalid Total. Please input a payment line item entry.')) ?>");
++                            return false;
++                        }
++                    }
++                    else
++                    {
++                    /* ### End Medic Coin Module */
+                     if (validate() != true) {
+                         flag = 1;
+                         alert("<?php echo addslashes(xl('Validation error: Fix and resubmit. Payment values are preserved!')) ?>")
+                         return false;
+                     }
++                    /* ### Begin Medic Coin Module */
++                    }
++                    /* ### End Medic Coin Module */
+                 },
+                 error: function (xhr, textStatus, error) {
+                     alert("<?php echo addslashes(xl('There is a Post error')) ?>")
+@@ -839,6 +1102,16 @@ WHERE encounter = ?", array($payrow['encounter']
+                         $el.val(val);
+                 }
+             });
++            /* ### Begin Medic Coin Module */
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                $('#paytotal_medic').show();
++            }
++            else
++            {
++                $('#paytotal_medic').hide();
++            }
++            /* ### End Medic Coin Module */
+         }
+ 
+         function getAuth() {
+@@ -883,10 +1156,18 @@ WHERE encounter = ?", array($payrow['encounter']
+                         $query1112 = "SELECT * FROM list_options where list_id=?  ORDER BY seq, title ";
+                         $bres1112 = sqlStatement($query1112, array('payment_method'));
+                         while ($brow1112 = sqlFetchArray($bres1112)) {
++                            ### Begin of Medic Coin Module
++                            /*
++                            ### End of Medic Coin Module
+                             if ($brow1112['option_id'] != 'credit_card' || $brow1112['option_id'] == 'electronic' || $brow1112['option_id'] == 'bank_draft') {
+                                 continue;
+                             }
+-
++                            ### Begin of Medic Coin Module
++                            */
++                            if ($brow1112['option_id'] != 'credit_card' && $brow1112['option_id'] != 'mediccoin') {
++                                continue;
++                            }
++                            ### End of Medic Coin Module
+                             echo "<option value='" . htmlspecialchars($brow1112['option_id'], ENT_QUOTES) . "'>" . htmlspecialchars(xl_list_label($brow1112['title']), ENT_QUOTES) . "</option>";
+                         }
+                         ?>
+@@ -964,6 +1245,12 @@ WHERE encounter = ?", array($payrow['encounter']
+                 <td class='detail'><?php echo xlt('Pre Payment'); ?></td>
+                 <td><input class="form-control" type='text' name='form_prepayment' style='width: 100px'/></td>
+             </tr>
++            <!-- Begin Medic Coin Module -->
++            <tr id="paytotal_prepayment_medic">
++                <td class='detail'><?php echo htmlspecialchars(xl('Total in MEDIC'), ENT_QUOTES); ?></td>
++                <td><input class="form-control" type='text' name='form_prepayment_medic' id='form_prepayment_medic' style='width:130px' readonly /></td>
++            </tr>
++            <!-- End Medic Coin Module -->
+         </table>
+         <table id="table_display" style="width: 100%; background: #eee;" class="table table-striped table-responsive">
+             <thead>
+@@ -1151,19 +1438,73 @@ where pid = ? and provider>0 ", array($pid
+                                                         readonly/>
+                 </td>
+             </tr>
++            <!-- Begin Medic Coin Module -->
++            <tr id="paytotal_medic" bgcolor="#cccccc" style="display:none;">
++                <td class="dehead" align="right" colspan="10">
++                    <?php echo htmlspecialchars(xl('Total in MEDIC'), ENT_QUOTES); ?>
++                    <input class="form-control" type='text' name='form_paytotal_medic' id='form_paytotal_medic' value=''
++                           style='color:#00aa00;width:110px;display:inline-block;' readonly />
++                </td>
++            </tr>
++            <!-- End Medic Coin Module -->
+         </table>
+         <?php
++        ### Begin Medic Coin Module ###
++        /*
++        ### End Medic Coin Module ###
+         if (isset($ccdata["name"])) {
++        ### Begin Medic Coin Module ###
++        */
++        if (isset($ccdata["name"]) || (isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin')) {
++        ### End Medic Coin Module ###
+             echo '<div class="col-xs-12 col-md-4 col-lg-4">
+ <div class="panel panel-default height">';
+             if (!isset($_SESSION['authUserID'])) {
+                 echo '<div class="panel-heading">' . xlt("Payment Information") . '<span style="color:#cc0000"><em> ' . xlt("Pending Auth since") . ': </em>' . text($edata["date"]) . '</span></div>';
+             } else {
++                ### Begin Medic Coin Module ###
++                if (isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin')
++                {
++                    echo '<div class="panel-heading">'.xlt("Payment Confirmation").' <button type="button" class="btn btn-danger btn-sm" >'.xlt("Cancel(Beta)").'</button></div>';
++                }
++                else
++                {
++                ### End Medic Coin Module ###
+                 echo '<div class="panel-heading">' . xlt("Payment Information") . ' <button type="button" class="btn btn-danger btn-sm" onclick="getAuth()">' . xlt("Authorize") . '</button></div>';
++                ### Begin Medic Coin Module ###
++                }
++                ### End Medic Coin Module ###
+             }
+         } else {
+             echo '<div style="display:none" class="col-xs-12 col-md-6 col-lg-6"><div class="panel panel-default height"><div class="panel-heading">' . xlt("Payment Information") . ' </div>';
+         }
++### Begin Medic Coin Module ###
++if (isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin')
++{
++    ?>
++    <div class="panel-body">
++        <strong><?php echo xlt('Charge Total');?>:  </strong><span>
++            <?php 
++                if ($invdata['radio_type_of_payment'] == 'pre_payment')
++                {
++                    echo attr($invdata["form_prepayment"]);
++                }
++                else
++                {
++                    echo attr($invdata["form_paytotal"]);   
++                }
++            ?>
++        </span><br>
++        <strong><?php echo xlt('MEDIC amount');?>:  </strong><span><?php echo attr($ccdata["paytotal_medic"])?></span> Medic<br>
++        <strong><?php echo xlt('Medic Address');?>:  </strong><a href="https://explorer.mediccoin.com/address/<?php echo htmlspecialchars($ccdata["fee_medicaddress"])?>" target="_blank"><?php echo attr($ccdata["fee_medicaddress"])?></a><br>
++        <strong><?php echo xlt('QR Code Address');?>:  </strong><img src="<?php echo ($GLOBALS['medic_qrcode_prefix'].$ccdata["fee_medicaddress"]);?>" /><br>
++        <strong><?php echo xlt('TxID');?>:  </strong><a href="https://explorer.mediccoin.com/tx/<?php echo htmlspecialchars($ccdata["txID"])?>" target="_blank"><?php echo attr($ccdata["txID"])?></a><br>
++    </div>
++    <?php
++}
++else
++{
++### End Medic Coin Module ###
+         ?>
+         <div class="panel-body">
+             <strong><?php echo xlt('Card Name'); ?>: </strong><span
+@@ -1183,6 +1524,9 @@ if (isset($_SESSION['authUserID'])) {
+ <strong><?php echo xlt('CVV'); ?>:  </strong><span id="pin"><?php echo attr($ccdata["pin"]) ?></span><br>
+ <strong><?php echo xlt('Charge Total'); ?>:  </strong><span id="ct"><?php echo attr($invdata["form_paytotal"]) ?></span><br>
+         </div>
++<?php
++}
++?>
+         </div>
+         </div>
+         <p>
+@@ -1197,6 +1541,16 @@ if (isset($_SESSION['authUserID'])) {
+         </p>
+         <input type="hidden" name="hidden_patient_code" id="hidden_patient_code" value="<?php echo attr($pid); ?>"/>
+         <input type='hidden' name='mode' id='mode' value=''/>
++        <!-- Begin Medic Coin Module -->
++        <?php
++            if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin')
++            {
++                echo '<input type="hidden" name="fee_medicaddress" value="' . $ccdata["fee_medicaddress"] . '" />';
++                echo '<input type="hidden" name="txID" value="' . $ccdata["txID"] . '" />';
++                echo '<input type="hidden" name="medic_usd" value="' . $ccdata["medic_usd"] . '" />';
++            } 
++        ?>
++        <!-- End Medic Coin Module -->
+     </form>
+ 
+     <script type="text/javascript">
+@@ -1275,7 +1629,7 @@ if (isset($_SESSION['authUserID'])) {
+                                                 <option value="2022">2022</option>
+                                                 <option value="2023">2023</option>
+                                                 <option value="2024">2024</option>
+-                                                <option value="2025">2017</option>
++                                                <option value="2025">2025</option>
+                                             </select>
+                                         </div>
+                                     </div>
+@@ -1307,6 +1661,36 @@ if (isset($_SESSION['authUserID'])) {
+                         </fieldset>
+                         <input type='hidden' name='cc_type' id='cc_type' value=''/>
+                     </form>
++                    <!-- Begin Medic Coin Module -->
++                    <form id="paymediccoin" class="form-horizontal col-xs-12 col-sm-6 col-md-6" style="display:none;">
++                        <div class="control-group">
++                            <label label-default="label-default" class="control-label"><?php echo xlt('MEDIC amount');?></label>
++                            <div class="controls">
++                                <input class="form-control" type='text' name='paytotal_medic' id='paytotal_medic' value="<?php if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin'){echo htmlspecialchars($ccdata["paytotal_medic"]);}?>"
++                               style='color:#00aa00;width:130px;display:inline-block;' readonly /> Medic
++                            </div>
++                        </div>
++                        <div class="control-group">
++                            <label label-default="label-default" class="control-label"><?php echo xlt('Send amount above to Medic Coin Receive Address');?></label>
++                            <div class="controls">
++                                <input class="form-control" type='text' name='fee_medicaddress' id='fee_medicaddress' value="<?php if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin'){echo htmlspecialchars($ccdata["fee_medicaddress"]);}else{echo $fee_medicaddress;} ?>" style='display:inline-block;width: 85%;' readonly />
++                                <a role="button" id="fee_medicaddress_copy" class="btn btn-default" title="Copy" style="display: inline-block;float:right;"><i class="fa fa-copy"></i></a>
++                                <p style="text-align: center;margin-top: 10px;"><img src="<?php echo ($GLOBALS['medic_qrcode_prefix'].$fee_medicaddress);?>" /></p>
++                            </div>
++                        </div>
++                        <div class="control-group">
++                            <label for="txID" label-default="label-default" class="control-label"><?php echo xlt('TxID');?></label>
++                            <div class="controls">
++                                <input name="txID" id="txID" type="text" class="form-control" title="<?php echo xla('txID'); ?>" required value="<?php if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin'){echo htmlspecialchars($ccdata["txID"]);}?>" />
++                            </div>
++                        </div>
++                        <div class="form-actions control-group">
++                            <button id="paymedicSubmit" class="btn btn-danger"><?php echo xlt('Submit');?></button>
++                            <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo xlt('Cancel');?></button>
++                        </div>
++                        <input type="hidden" name="medic_usd" value="<?php if (isset($_SESSION['authUserID']) && isset($invdata['form_method']) && $invdata['form_method'] == 'mediccoin'){echo htmlspecialchars($ccdata["medic_usd"]);}else{echo $GLOBALS['medic_usd'];} ?>" />
++                    </form>    
++                    <!-- End Medic Coin Module -->
+                 </div>
+                 <!-- Body  -->
+                 <div class="modal-footer">
+@@ -1318,6 +1702,19 @@ if (isset($_SESSION['authUserID'])) {
+     </div>
+     <?php echo "<script>var ccerr='" . xlt('Invalid Credit Card Number') . "';</script>"; ?>
+     <script type="text/javascript">
++        /* ### Begin Medic Coin Module */
++        $('#fee_medicaddress_copy').on('click', function(){
++            $('#paymediccoin #fee_medicaddress').select();
++            document.execCommand('copy');
++            return false;
++        });
++        $('#openPayModal').on('hidden.bs.modal', function () {
++            if ($('#form_method').val() == 'mediccoin')
++            {
++                $('#paymediccoin #txID').val('');
++            }
++        })
++        /* ### End Medic Coin Module */
+         $('#cc_number').validateCreditCard(function (result) {
+             var r = (result.card_type == null ? '' : result.card_type.name.toUpperCase())
+             var v = (result.valid == true ? ' Valid #' : ' Invalid #')
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/portal/report/pat_ledger.php ./web/portal/report/pat_ledger.php
+--- ./openemr.v5.0.1.4/portal/report/pat_ledger.php	2018-09-22 08:45:59.336870653 +0000
++++ ./web/portal/report/pat_ledger.php	2018-09-18 13:48:12.058663867 +0000
+@@ -45,6 +45,19 @@
+ $pat_pid = $_GET['patient_id'];
+ $type_form = $_GET['form'];
+ 
++### Begin Medic Coin Module ###
++$medic_enc_chg = $medic_total_chg = 0;
++$medic_enc_pmt = $medic_total_pmt = 0;
++$medic_enc_adj = $medic_total_adj = 0;
++$medic_enc_bal = $medic_total_bal = 0;
++if (!function_exists('cformat'))
++{
++    function cformat($float) { // cformat = 'Crypto Format'
++    	return sprintf('%0.8f', $float);
++    }
++}
++### End Medic Coin Module ###
++
+ //if (! acl_check('acct', 'rep')) die(xlt("Unauthorized access."));
+ 
+ function GetAllUnapplied($pat = '', $from_dt = '', $to_dt = '')
+@@ -101,9 +114,16 @@
+     if ($thisData == '') {
+         return '';
+     }
+-
++    ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++    /*
++    ### End Medic Coin Module 
+     $fres=sqlStatement("SELECT title FROM list_options WHERE list_id=? ".
+         "AND option_id=?", array($thisList, $thisData));
++    ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++    */
++    $fres=sqlStatement("SELECT title FROM list_options WHERE list_id = ? ".
++        "AND option_id = ? AND activity = 1", array($thisList, $thisData));
++    ### End Medic Coin Module 
+     if ($fres) {
+         $rret=sqlFetchArray($fres);
+         $dispValue= xl_list_label($rret{'title'});
+@@ -155,6 +175,30 @@
+ function PrintEncFooter()
+ {
+     global $enc_units, $enc_chg, $enc_pmt, $enc_adj, $enc_bal;
++    ### Begin Medic Coin Module ###
++    global $medic_enc_chg, $medic_enc_pmt, $medic_enc_adj, $medic_enc_bal;
++    
++    if($medic_enc_chg || $medic_enc_pmt || $medic_enc_adj || $medic_enc_bal)
++    {
++        $print_medic_enc_chg = floatval($medic_enc_chg) ? "&nbsp;|&nbsp;" . $medic_enc_chg : '';
++        $print_medic_enc_pmt = floatval($medic_enc_pmt) ? "&nbsp;|&nbsp;" . $medic_enc_pmt : '';
++        $print_medic_enc_adj = floatval($medic_enc_adj) ? "&nbsp;|&nbsp;" . $medic_enc_adj : '';
++        $print_medic_enc_bal = floatval($medic_enc_bal) ? "&nbsp;|&nbsp;" . $medic_enc_bal : '';
++        echo "<tr bgcolor='#DDFFFF'>";
++        echo "<td colspan='3'>&nbsp;</td>";
++        echo "<td class='detail'>". xlt('Encounter Balance').":</td>";
++        echo "<td class='detail' style='text-align: right;'>".text($enc_units)."</td>";
++        //echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_chg)) . $print_medic_enc_chg . "</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_chg))."</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_pmt)) . $print_medic_enc_pmt . "</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_adj)) . $print_medic_enc_adj . "</td>";
++        //echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal)) . $print_medic_enc_bal . "</td>";
++        echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal))."</td>";
++        echo "</tr>\n";
++    }
++    else
++    {
++    ### End Medic Coin Module ###
+     echo "<tr bgcolor='#DDFFFF'>";
+     echo "<td colspan='3'>&nbsp;</td>";
+     echo "<td class='detail'>". xlt('Encounter Balance').":</td>";
+@@ -164,15 +208,34 @@
+     echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_adj))."</td>";
+     echo "<td class='detail' style='text-align: right;'>".text(oeFormatMoney($enc_bal))."</td>";
+     echo "</tr>\n";
++    ### Begin Medic Coin Module ###
++    }
++    ### End Medic Coin Module ###
+ }
+ function PrintCreditDetail($detail, $pat, $unassigned = false)
+ {
+     global $enc_pmt, $total_pmt, $enc_adj, $total_adj, $enc_bal, $total_bal;
+     global $bgcolor, $orow, $enc_units, $enc_chg;
++    ### Begin Medic Coin Module
++    global $medic_enc_pmt, $medic_total_pmt, $medic_enc_adj, $medic_total_adj, $medic_enc_bal, $medic_total_bal, $enc_chg;
++    ### End Medic Coin Module
+     foreach ($detail as $pmt) {
++        ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++        $uap_flag = false;
++        ### End Medic Coin Module 
+         if ($unassigned) {
+             if (($pmt['pay_total'] - $pmt['applied']) == 0) {
++                ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++                /*
++                ### End Medic Coin Module
+                 continue;
++                ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++                */
++                if (!$GLOBALS['show_payment_history']) {
++                    continue;
++                }
++                $uap_flag = true;
++                ### End Medic Coin Module
+             }
+         }
+ 
+@@ -212,7 +275,14 @@
+ 
+             $description .= '['.$memo.']';
+         }
+-
++        ### Begin Medic Coin Module - modify by /interface/reports/pat_ledger.php
++        if ($uap_flag === true) {
++            if ($description) {
++                $description .= ' ';
++            }
++            $description .= '{Pay History}';
++        }
++        ### End Medic Coin Module 
+         $print .= "<td class='detail' colspan='2'>".
+                                       text($description)."&nbsp;</td>";
+         $payer = ($pmt['name'] == '') ? xl('Patient') : $pmt['name'];
+@@ -254,12 +324,54 @@
+         if ($adj_amt != 0) {
+             $print_adj = oeFormatMoney($adj_amt);
+         }
+-
++        
++        ### Begin Medic Coin Module
++        if ($pmt['payment_method'] == 'mediccoin')
++        {
++            $medic_usd = floatval($pmt['medic_paytotal']) ? cformat($pmt['pay_total']/$pmt['medic_paytotal']) : 0;
++            
++            if ($unassigned) {
++                $medic_pmt_amt = $medic_usd ? cformat(($pmt['pay_total'] - $pmt['applied'])/$medic_usd) : 0;
++                $medic_uac_bal = $medic_pmt_amt*-1;
++                $medic_uac_appl = $medic_usd ? cformat($pmt['applied']/$medic_usd) : 0;
++                $medic_uac_total = $medic_usd ? cformat($pmt['pay_total']/$medic_usd) : 0;
++                $medic_pmt_amt = $medic_usd ? cformat($pmt['pay_total']/$medic_usd) : 0;
++                $medic_total_pmt = cformat($medic_total_pmt-$medic_uac_bal);
++            } else {
++                $medic_uac_total = '';
++                $medic_uac_bal = '';
++                $medic_uac_appl = '';
++                $medic_pmt_amt = $pmt['medic_payamount'];
++                $medic_adj_amt = $pmt['medic_adjamount'];
++                $medic_enc_pmt = cformat($medic_enc_pmt + $pmt['medic_payamount']);
++                $medic_total_pmt = cformat($medic_total_pmt + $pmt['medic_payamount']);
++                $medic_enc_adj = cformat($medic_enc_adj + $pmt['medic_adjamount']);
++                $medic_total_adj = cformat($medic_total_adj + $pmt['medic_adjamount']);
++            }
++            if ($pmt_amt != 0) {
++                $print_medic_pmt = "&nbsp;|&nbsp;" . $medic_pmt_amt;
++            }
++            if ($adj_amt != 0) {
++                $print_medic_adj = "&nbsp;|&nbsp;" . $medic_adj_amt;
++            }
++            $print_medic_appl = floatval($uac_appl) ? "&nbsp;|&nbsp;" . $medic_uac_appl : "";
++            $print_medic_bal = floatval($uac_bal) ? "&nbsp;|&nbsp;" . $medic_uac_bal : "";
++        }
++        /*
++        ### End Medic Coin Module
+         $print .= "<td class='detail' style='text-align: right;'>".text($uac_appl)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($print_pmt)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($print_adj)."&nbsp;</td>";
+         $print .= "<td class='detail' style='text-align: right;'>".text($uac_bal)."&nbsp;</td>";
+         $print .= "</tr>\n";
++        ### Begin Medic Coin Module
++        */
++        $print .= "<td class='detail' style='text-align: center;'>".text($uac_appl). $print_medic_appl . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($print_pmt). $print_medic_pmt . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($print_adj). $print_medic_adj . "&nbsp;</td>";
++        $print .= "<td class='detail' style='text-align: right;'>".text($uac_bal). $print_medic_bal . "&nbsp;</td>";
++        $print .= "</tr>\n";
++        ### End Medic Coin Module
+         echo $print;
+         if ($pmt['follow_up_note'] != '') {
+             $bgcolor = (($bgcolor == "#FFFFDD") ? "#FFDDDD" : "#FFFFDD");
+@@ -270,6 +382,7 @@
+             $print .= "</td></tr>\n";
+             echo $print;
+         }
++        
+ 
+         if ($unassigned) {
+             $total_bal = $total_bal + $uac_bal;
+@@ -277,7 +390,14 @@
+             $enc_bal = $enc_bal - $pmt_amt - $adj_amt;
+             $total_bal = $total_bal - $pmt_amt - $adj_amt;
+         }
+-
++        ### Begin Medic Coin Module
++        if ($unassigned) {
++            $medic_total_bal = cformat($medic_total_bal + $medic_uac_bal);
++        } else {
++            $medic_enc_bal = cformat($medic_enc_bal - $medic_pmt_amt - $medic_adj_amt);
++            $medic_total_bal = cformat($medic_total_bal - $medic_pmt_amt - $medic_adj_amt);
++        }
++        ### End Medic Coin Module
+         $orow++;
+     }
+ 
+@@ -666,9 +786,27 @@
+     <td class='bold' ><?php echo xlt('Billed Date'); ?> / <?php echo xlt('Payor'); ?></td>
+     <td class='bold' ><?php echo xlt('Type'); ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+     <?php echo xlt('Units'); ?></td>
+-    <td class='bold' >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Charge'); ?></td>
+-    <td align='right' class='bold' >&nbsp;&nbsp;<?php echo xlt('Payment'); ?></td>
+-    <td align='right' class='bold' >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Adjustment'); ?></td>
++    <td class='bold' >
++        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Charge'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
++    <td align='right' class='bold' >
++        &nbsp;&nbsp;<?php echo xlt('Payment'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
++    <td align='right' class='bold' >
++        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<?php echo xlt('Adjustment'); ?>
++        <!-- Begin Medic Coin Module /-->
++        <br/>
++        <?php echo xlt($GLOBALS['medic_currency']); ?>&nbsp;|&nbsp;<?php echo xlt('MEDIC'); ?>
++        <!-- End Medic Coin Module /-->
++    </td>
+     <td align='right' class='bold' >&nbsp;&nbsp;&nbsp;<?php echo xlt('Balance'); ?></td>
+  </tr>
+  <tr>
+@@ -715,6 +853,9 @@
+             }
+ 
+             $enc_units = $enc_chg = $enc_pmt = $enc_adj = $enc_bal = 0;
++            ### Begin Medic Coin Module ###
++            $medic_enc_chg = $medic_enc_pmt = $medic_enc_adj = $medic_enc_bal = 0;
++            ### End Medic Coin Module ###
+         }
+ 
+         if ($erow{'id'}) {
+@@ -756,7 +897,14 @@
+             $enc_chg += $erow['fee'];
+             $enc_bal += $erow['fee'];
+             $orow++;
+-
++            
++            ### Begin Medic Coin Module ###
++            //$medic_total_chg += $erow['fee'];
++            //$medic_total_bal += $erow['fee'];
++            //$medic_enc_chg += $erow['fee'];
++            //$medic_enc_bal += $erow['fee'];
++            ### End Medic Coin Module ###
++            
+             if ($_REQUEST['form_csvexport']) {
+                 echo $csv;
+             } else {
+@@ -799,6 +947,28 @@
+     }
+ 
+     if (!$_REQUEST['form_csvexport'] && $orow) {
++        ### Begin Medic Coin Module ###
++        if($medic_total_chg || $medic_total_pmt || $medic_total_adj || $medic_total_bal)
++        {
++            $print_medic_total_chg = floatval($medic_total_chg) ? "&nbsp;|&nbsp;" . $medic_total_chg : '';
++            $print_medic_total_pmt = floatval($medic_total_pmt) ? "&nbsp;|&nbsp;" . $medic_total_pmt : '';
++            $print_medic_total_adj = floatval($medic_total_adj) ? "&nbsp;|&nbsp;" . $medic_total_adj : '';
++            $print_medic_total_bal = floatval($medic_total_bal) ? "&nbsp;|&nbsp;" . $medic_total_bal : '';
++            echo "<tr bgcolor='#DDFFFF'>\n";
++            echo " <td colspan='2'>&nbsp;</td>";
++            echo " <td class='bold' colspan='2'>" . xlt("Grand Total") ."</td>\n";
++            echo " <td class='bold' style='text-align: center;'>". text($total_units) ."</td>\n";
++            //echo " <td class='bold' style='text-align: center;'>". text(oeFormatMoney($total_chg)) . $print_medic_total_chg  ."</td>\n";
++            echo " <td class='bold' style='text-align: center;'>". text(oeFormatMoney($total_chg)) ."</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_pmt)) . $print_medic_total_pmt  ."</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_adj)) . $print_medic_total_adj  ."</td>\n";
++            //echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . $print_medic_total_bal  . "</td>\n";
++            echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . "</td>\n";
++            echo " </tr>\n";
++        }
++        else
++        {
++        ### End Medic Coin Module ###
+         echo "<tr bgcolor='#DDFFFF'>\n";
+         echo " <td colspan='2'>&nbsp;</td>";
+         echo " <td class='bold' colspan='2'>" . xlt("Grand Total") ."</td>\n";
+@@ -808,6 +978,9 @@
+         echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_adj)) ."</td>\n";
+         echo " <td class='bold' style='text-align: right;'>". text(oeFormatMoney($total_bal)) . "</td>\n";
+         echo " </tr>\n";
++        ### Begin Medic Coin Module ###
++        }
++        ### End Medic Coin Module ###
+     ?>
+     </table>
+   <tr><td>&nbsp;</td></tr><br><br>
+Binary files ./openemr.v5.0.1.4/public/images/favicon-32x32.png and ./web/public/images/favicon-32x32.png differ
+Binary files ./openemr.v5.0.1.4/public/images/favicon.ico and ./web/public/images/favicon.ico differ
+Binary files ./openemr.v5.0.1.4/public/images/login-logo.png and ./web/public/images/login-logo.png differ
+Binary files ./openemr.v5.0.1.4/public/images/login-logo.psd and ./web/public/images/login-logo.psd differ
+Binary files ./openemr.v5.0.1.4/public/images/logo-full-con.png and ./web/public/images/logo-full-con.png differ
+Binary files ./openemr.v5.0.1.4/public/images/menu-logo.png and ./web/public/images/menu-logo.png differ
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/sql/medicemr.sql ./web/sql/medicemr.sql
+--- ./openemr.v5.0.1.4/sql/medicemr.sql	1970-01-01 00:00:00.000000000 +0000
++++ ./web/sql/medicemr.sql	2018-09-13 12:37:33.637817661 +0000
+@@ -0,0 +1,26 @@
++# Change app name to MedicEMR
++INSERT INTO globals ( gl_name, gl_index, gl_value ) VALUES ( 'openemr_name', '0', 'MedicEMR');
++
++# Change theme to new one
++INSERT INTO globals ( gl_name, gl_index, gl_value ) VALUES ( 'css_header', '0', 'style_powder_blue.css');
++
++# Add Medic Coin payment support
++INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`, `is_default`, `option_value`, `mapping`, `notes`, `codes`, `toggle_setting_1`, `toggle_setting_2`, `activity`, `subtype`, `edit_options`, `timestamp`) VALUES ('payment_method','mediccoin', 'Medic Coin', '5', '1', '0', '', NULL, '', '0', '0', '1', '', '1', '2018-09-05 04:27:21');
++ALTER TABLE `ar_session`
++	ADD `medic_paytotal` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `payment_method`,
++	ADD `medic_address` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_paytotal`,
++	ADD `medic_txID` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_address`;
++
++ALTER TABLE `payments`
++	ADD `medic_amount1` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `posted2`,
++	ADD `medic_amount2` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `medic_amount1`,
++	ADD `medic_posted1` DECIMAL(20,8) NOT NULL DEFAULT'0' AFTER `medic_amount2`,
++	ADD `medic_posted2` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `medic_posted1`,
++	ADD `medic_address` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_posted2`,
++	ADD `medic_txID` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_address`;
++
++ALTER TABLE `ar_activity`
++	ADD `medic_payamount` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `reason_code`,
++	ADD `medic_adjamount` DECIMAL(20,8) NOT NULL DEFAULT '0' AFTER `medic_payamount`,
++	ADD `medic_address` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_adjamount`,
++	ADD `medic_txID` VARCHAR(256) NOT NULL DEFAULT '' AFTER `medic_address`;
+diff -ruN '--exclude-from=./diff.exclude' ./openemr.v5.0.1.4/sql/medicemr_multisites.sql ./web/sql/medicemr_multisites.sql
+--- ./openemr.v5.0.1.4/sql/medicemr_multisites.sql	1970-01-01 00:00:00.000000000 +0000
++++ ./web/sql/medicemr_multisites.sql	2018-09-08 16:56:06.059318435 +0000
+@@ -0,0 +1 @@
++INSERT IGNORE INTO `product_registration` (`registration_id`, `email`, `opt_out`) VALUES ('null', NULL, 1);
